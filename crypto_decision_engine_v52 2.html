@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Crypto Decision Engine v5.2</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#080c10;--card:#0f1820;--card2:#0d1520;--border:#1a2535;--border2:#1f2d3d;
+  --text:#d4dce8;--muted:#7f8c9a;--yes:#2ecc71;--no:#e74c3c;--warn:#f39c12;
+  --info:#f1c40f;--conf:#3498db;--skip:#7f8c9a;
+}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,Arial,sans-serif;font-size:14px;}
+body{padding:10px;max-width:480px;margin:auto;}
+
+/* ── Controls ── */
+.ctrl-row{display:flex;gap:6px;align-items:stretch;margin-top:6px;}
+select,input{background:var(--card2);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:9px 10px;font-size:14px;width:100%;}
+button{background:#1a7a42;border:none;color:#fff;font-weight:700;border-radius:6px;padding:9px 12px;font-size:14px;cursor:pointer;white-space:nowrap;}
+button:active{opacity:.8;}
+.btn-auto{background:#1a3a6a;}
+.btn-auto.on{background:#7a3a1a;}
+.btn-refresh{background:#1a4a6a;width:40px;flex-shrink:0;font-size:16px;}
+.ctrl-row select{flex:1;}
+
+/* ── Status bar ── */
+.status-bar{display:flex;gap:0;background:var(--card2);border:1px solid var(--border);border-radius:8px;margin-top:8px;overflow:hidden;font-size:12px;}
+.sb-item{flex:1;padding:5px 6px;border-right:1px solid var(--border);min-width:0;}
+.sb-item:last-child{border-right:none;}
+.sb-label{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-val{font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── Mini chart ── */
+#miniChart{display:block;width:100%;height:48px;border-radius:6px;background:var(--card2);margin-top:6px;}
+
+/* ── Status/error text ── */
+.status-txt{font-size:11px;color:var(--muted);margin-top:4px;min-height:14px;}
+.error-txt{font-size:11px;color:var(--no);margin-top:4px;min-height:14px;line-height:1.4;}
+
+/* ── Signal Colors ── */
+.yes{color:var(--yes);font-weight:700;} .no{color:var(--no);font-weight:700;}
+.skip{color:var(--skip);font-weight:700;} .warn{color:var(--warn);font-weight:700;}
+.info{color:var(--info);} .conf{color:var(--conf);font-weight:700;}
+.small{font-size:11px;color:var(--muted);}
+
+/* ── Decision Card (always visible) ── */
+.decision-card{border:2px solid var(--info);border-radius:10px;padding:12px 14px;margin-top:8px;background:#0c1408;line-height:1.6;}
+.decision-card.yes-card{border-color:var(--yes);background:#071208;}
+.decision-card.no-card{border-color:var(--no);background:#120707;}
+.decision-big{font-size:26px;font-weight:800;letter-spacing:.5px;line-height:1.1;}
+.conf-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:13px;align-items:center;}
+.conf-pill{background:rgba(255,255,255,.06);border-radius:5px;padding:2px 8px;font-size:13px;}
+.alert-strip{border-radius:6px;padding:6px 10px;margin-top:6px;font-size:12px;font-weight:700;line-height:1.4;}
+.alert-strip.yes{background:#061a0e;border:1px solid var(--yes);color:var(--yes);}
+.alert-strip.no{background:#1a0606;border:1px solid var(--no);color:var(--no);}
+.alert-strip.warn{background:#1a1000;border:1px solid var(--warn);color:var(--warn);}
+.alert-strip.info{background:#1a1600;border:1px solid var(--info);color:var(--info);}
+
+/* ── Quick stats grid ── */
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
+.q-box{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
+.q-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
+.q-val{font-size:15px;font-weight:700;margin-top:1px;}
+.q-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+
+/* ── Price row ── */
+.price-row{display:flex;align-items:baseline;gap:8px;margin-top:6px;flex-wrap:wrap;}
+.price-big{font-size:20px;font-weight:700;}
+.price-diff{font-size:13px;font-weight:700;}
+.price-target{font-size:13px;color:var(--muted);}
+
+/* ── Tabs ── */
+.tab-bar{display:flex;gap:0;background:var(--card2);border:1px solid var(--border);border-radius:8px;margin-top:10px;overflow:hidden;}
+.tab-btn{flex:1;padding:9px 4px;font-size:12px;font-weight:600;color:var(--muted);background:transparent;border:none;border-right:1px solid var(--border);cursor:pointer;transition:all .15s;}
+.tab-btn:last-child{border-right:none;}
+.tab-btn.active{background:var(--card);color:var(--text);}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* ── Inside tabs ── */
+.row-item{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.row-item:last-child{border-bottom:none;}
+.row-label{color:var(--muted);font-size:12px;}
+.section{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:8px;}
+.section-title{font-size:13px;font-weight:700;margin-bottom:6px;}
+.prob-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:6px;}
+.prob-cell{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 8px;text-align:center;}
+.prob-cell .label{font-size:10px;color:var(--muted);}
+.prob-cell .val{font-size:15px;font-weight:700;margin-top:1px;}
+.tick-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.tick-chip{background:var(--card);border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:12px;font-weight:600;}
+table{width:100%;border-collapse:collapse;margin-top:4px;font-size:12px;}
+td,th{border-bottom:1px solid var(--border);padding:5px 6px;text-align:left;vertical-align:top;}
+th{color:var(--info);font-size:11px;}
+.scalp-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;margin-bottom:6px;}
+.scalp-badge.yes{background:#0a2010;border:1px solid var(--yes);color:var(--yes);}
+.scalp-badge.no{background:#200a0a;border:1px solid var(--no);color:var(--no);}
+.scalp-badge.warn{background:#201000;border:1px solid var(--warn);color:var(--warn);}
+.scalp-badge.skip{background:#141414;border:1px solid var(--skip);color:var(--skip);}
+
+/* ── Inline alert cards (micro/scalp/cushion shown on main screen) ── */
+.inline-alert{border-radius:8px;padding:8px 11px;margin-top:6px;font-size:12px;line-height:1.5;}
+.inline-alert.yes{background:#061a0e;border:1px solid var(--yes);}
+.inline-alert.no{background:#1a0606;border:1px solid var(--no);}
+.inline-alert.warn{background:#1a1000;border:1px solid var(--warn);}
+.inline-alert.skip{background:#111820;border:1px solid var(--border);}
+.inline-alert-title{font-weight:700;font-size:13px;margin-bottom:2px;}
+.inline-alert-sub{color:var(--muted);font-size:11px;}
+
+/* ── Compact exchange strip ── */
+.exch-strip{display:flex;gap:0;background:var(--card2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:6px;}
+.exch-cell{flex:1;padding:6px 8px;border-right:1px solid var(--border);min-width:0;}
+.exch-cell:last-child{border-right:none;}
+.exch-cell-label{font-size:10px;color:var(--muted);}
+.exch-cell-val{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── Tick chips wrap tighter ── */
+.tick-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
+.tick-chip{background:var(--card);border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:11px;font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+  <div style="font-size:15px;font-weight:700;">Decision Engine <span class="info">v5.2</span></div>
+  <div id="refreshStatus" class="status-txt" style="margin:0;"></div>
+</div>
+
+<!-- ── Controls ── -->
+<div class="ctrl-row">
+  <select id="coin" style="flex:1.2;margin-top:0;">
+    <option value="BTC-USD">BTC</option>
+    <option value="ETH-USD">ETH</option>
+    <option value="SOL-USD">SOL</option>
+    <option value="XRP-USD">XRP</option>
+    <option value="DOGE-USD">DOGE</option>
+    <option value="BNB-USD">BNB</option>
+  </select>
+  <input id="target" type="number" step="0.01" placeholder="Target (auto)" style="flex:2;margin-top:0;">
+  <button class="btn-refresh" id="btnTargetRefresh" onclick="refreshKalshiTarget(true)">↻</button>
+</div>
+<div class="ctrl-row">
+  <input id="market" type="number" step="0.01" min="0" max="1" placeholder="Kalshi YES prob (auto)" style="flex:2;margin-top:0;">
+  <button onclick="run()" style="flex:1.5;margin-top:0;">▶ Analyze</button>
+</div>
+<div class="ctrl-row">
+  <select id="autoRefreshSec" style="flex:1;margin-top:0;">
+    <option value="10">10s</option>
+    <option value="15">15s</option>
+    <option value="20" selected>20s</option>
+    <option value="30">30s</option>
+  </select>
+  <button id="btnAuto" onclick="toggleAutoRefresh()" class="btn-auto" style="flex:2;margin-top:0;">Auto OFF</button>
+</div>
+
+<div id="errorMsg" class="error-txt"></div>
+
+<!-- ── Live status bar (4 chips) ── -->
+<div class="status-bar" id="statusBar">
+  <div class="sb-item"><div class="sb-label">CB Price</div><div class="sb-val info" id="tbCoinbase">—</div></div>
+  <div class="sb-item"><div class="sb-label">Fast/Lag</div><div class="sb-val skip" id="tbSpread">—</div></div>
+  <div class="sb-item"><div class="sb-label">Flow/OB</div><div class="sb-val skip" id="tbFlowOB">—</div></div>
+  <div class="sb-item"><div class="sb-label">Kalshi YES</div><div class="sb-val skip" id="tbKalshi">—</div></div>
+</div>
+
+<!-- ── Mini chart ── -->
+<canvas id="miniChart"></canvas>
+
+<!-- ── Result area ── -->
+<div id="result"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════
+function $(id){ return document.getElementById(id); }
+function setText(id, v){ const e=$(id); if(e) e.textContent = v; }
+function setHTML(id, v){ const e=$(id); if(e) e.innerHTML = v; }
+function setClass(id, c){ const e=$(id); if(e) e.className = c; }
+function clamp(x, lo, hi){ return Math.max(lo, Math.min(hi, x)); }
+function showErr(m){ const e=$("errorMsg"); if(e) e.textContent = m||""; }
+function clearErr(){ showErr(""); }
+
+async function fetchJ(url, timeout=5000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), timeout);
+  try{
+    const r = await fetch(url,{cache:"no-store",signal:ctrl.signal});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KALSHI CONFIG
+// ═══════════════════════════════════════════════════════════════
+const KALSHI_SERIES = {
+  "BTC-USD":"KXBTC15M","ETH-USD":"KXETH15M","SOL-USD":"KXSOL15M",
+  "XRP-USD":"KXXRP15M","DOGE-USD":"KXDOGE15M","BNB-USD":null
+};
+let latestKalshi = null;
+let autoTimer = null;
+
+// ═══════════════════════════════════════════════════════════════
+// TICK ENGINE
+// ═══════════════════════════════════════════════════════════════
+const TICK_PERIODS = [5, 10, 30];
+
+const tickStore = {
+  ticks: [],
+  candles5s:  [],
+  candles10s: [],
+  candles30s: [],
+  openCandle: null,
+  openPeriod: 10,
+  maxTicks: 600,
+  maxCandles: 120,
+
+  push(price, side, volume){
+    const now = Date.now();
+    this.ticks.push({price, time: now, side: side||"unknown", volume: volume||0});
+    if(this.ticks.length > this.maxTicks) this.ticks.shift();
+    this._aggregate(this.candles5s,  5000,  now, price, volume);
+    this._aggregate(this.candles10s, 10000, now, price, volume);
+    this._aggregate(this.candles30s, 30000, now, price, volume);
+  },
+
+  _aggregate(arr, periodMs, now, price, volume){
+    const boundary = Math.floor(now / periodMs) * periodMs;
+    const last = arr[arr.length-1];
+    if(last && last.boundary === boundary){
+      last.high   = Math.max(last.high, price);
+      last.low    = Math.min(last.low, price);
+      last.close  = price;
+      last.volume += (volume||0);
+      last.count++;
+    } else {
+      arr.push({ boundary, open:price, high:price, low:price, close:price, volume:volume||0, count:1 });
+      if(arr.length > this.maxCandles) arr.shift();
+    }
+  },
+
+  getCandles(period){
+    if(period===5)  return this.candles5s;
+    if(period===10) return this.candles10s;
+    return this.candles30s;
+  },
+
+  getRecentCloses(period, n){
+    const arr = this.getCandles(period);
+    return arr.slice(-n).map(c=>c.close);
+  },
+
+  tickVWAP(windowMs = 180000){
+    const now = Date.now();
+    const cutoff = now - windowMs;
+    let pv = 0, w = 0;
+    for(const t of this.ticks){
+      if(t.time < cutoff) continue;
+      const age = (now - t.time) / windowMs;
+      const weight = Math.exp(-age * 2);
+      pv += t.price * weight;
+      w  += weight;
+    }
+    return w > 0 ? pv/w : 0;
+  },
+
+  flowRatio(n=30){
+    const slice = this.ticks.slice(-n);
+    if(!slice.length) return { ratio: 0.5, buys: 0, sells: 0, signal: "WAITING", cls: "skip" };
+    const buys  = slice.filter(t=>t.side==="buy").length;
+    const sells = slice.filter(t=>t.side==="sell").length;
+    const total = slice.length;
+    const ratio = buys / total;
+    let signal = "NEUTRAL FLOW", cls = "skip";
+    if(ratio >= 0.70){ signal = "STRONG BUY FLOW"; cls = "yes"; }
+    else if(ratio >= 0.60){ signal = "BUY PRESSURE"; cls = "yes"; }
+    else if(ratio <= 0.30){ signal = "STRONG SELL FLOW"; cls = "no"; }
+    else if(ratio <= 0.40){ signal = "SELL PRESSURE"; cls = "no"; }
+    return { ratio, buys, sells, total, signal, cls };
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ORDER BOOK ENGINE
+// ═══════════════════════════════════════════════════════════════
+const bookStore = {
+  bids: new Map(),
+  asks: new Map(),
+  lastMid: 0,
+
+  applySnapshot(bids, asks){
+    this.bids.clear(); this.asks.clear();
+    for(const [p,s] of bids) this.bids.set(+p, +s);
+    for(const [p,s] of asks) this.asks.set(+p, +s);
+    this._updateMid();
+  },
+
+  applyUpdate(changes){
+    for(const [side, price, size] of changes){
+      const map = side==="buy" ? this.bids : this.asks;
+      const p = +price, s = +size;
+      if(s === 0) map.delete(p); else map.set(p, s);
+    }
+    this._updateMid();
+  },
+
+  _updateMid(){
+    const topBid = this.bids.size ? Math.max(...this.bids.keys()) : 0;
+    const topAsk = this.asks.size ? Math.min(...this.asks.keys()) : 0;
+    if(topBid && topAsk) this.lastMid = (topBid+topAsk)/2;
+  },
+
+  imbalance(pct=0.003){
+    if(!this.lastMid) return { ratio:0.5, signal:"WAITING", cls:"skip", bidDepth:0, askDepth:0 };
+    const lo = this.lastMid*(1-pct), hi = this.lastMid*(1+pct);
+    let bidD=0, askD=0;
+    for(const [p,s] of this.bids) if(p>=lo) bidD+=s;
+    for(const [p,s] of this.asks) if(p<=hi) askD+=s;
+    const total = bidD+askD;
+    if(!total) return { ratio:0.5, signal:"NO DATA", cls:"skip", bidDepth:0, askDepth:0 };
+    const ratio = bidD/total;
+    let signal="BALANCED BOOK", cls="skip";
+    if(ratio>=0.65){ signal="HEAVY BID WALL"; cls="yes"; }
+    else if(ratio>=0.58){ signal="BID SIDE HEAVIER"; cls="yes"; }
+    else if(ratio<=0.35){ signal="HEAVY ASK WALL"; cls="no"; }
+    else if(ratio<=0.42){ signal="ASK SIDE HEAVIER"; cls="no"; }
+    return { ratio, signal, cls, bidDepth:bidD, askDepth:askD };
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// KALSHI VELOCITY TRACKER
+// ═══════════════════════════════════════════════════════════════
+const kalshiVel = {
+  history: [],
+  maxLen: 10,
+
+  push(yesMid){
+    const now = Date.now();
+    this.history.push({time:now, yesMid});
+    if(this.history.length > this.maxLen) this.history.shift();
+  },
+
+  velocity(n=4){
+    const slice = this.history.slice(-Math.min(n, this.history.length));
+    if(slice.length < 2) return 0;
+    const first=slice[0], last=slice[slice.length-1];
+    const mins = Math.max(0.017, (last.time - first.time)/60000);
+    return ((last.yesMid - first.yesMid) * 100) / mins;
+  },
+
+  lagSignal(currentPrice, lastSnapshotPrice){
+    const vel = this.velocity();
+    const priceDeltaPct = lastSnapshotPrice>0 ? Math.abs((currentPrice-lastSnapshotPrice)/lastSnapshotPrice)*100 : 0;
+    const kalshiMoving = Math.abs(vel) >= 3.0;
+    const priceStill = priceDeltaPct < 0.05;
+
+    if(kalshiMoving && priceStill){
+      return { signal: vel>0 ? "KALSHI REPRICING UP (AHEAD OF PRICE)" : "KALSHI REPRICING DOWN (AHEAD OF PRICE)",
+               cls: vel>0?"yes":"no", vel, type:"kalshi_leads" };
+    }
+    if(!kalshiMoving && priceDeltaPct >= 0.07){
+      return { signal: currentPrice>lastSnapshotPrice ? "KALSHI LAGGING BULLISH MOVE" : "KALSHI LAGGING BEARISH MOVE",
+               cls: currentPrice>lastSnapshotPrice?"yes":"no", vel, type:"price_leads" };
+    }
+    return { signal: Math.abs(vel)>1?"Slow repricing ("+vel.toFixed(1)+" pts/min)":"Kalshi in sync", cls:"skip", vel, type:"sync" };
+  },
+
+  persistentLag(currentPrice){
+    if(this.history.length < 3) return false;
+    const oldest = this.history[0];
+    const latestYes = this.history[this.history.length-1].yesMid;
+    const kalshiMove = Math.abs((latestYes - oldest.yesMid)*100);
+    return kalshiMove < 2.0;
+  }
+};
+
+let kalshiBgTimer = null;
+async function startKalshiBgPoller(){
+  if(kalshiBgTimer) clearInterval(kalshiBgTimer);
+  kalshiBgTimer = setInterval(async ()=>{
+    const product = $("coin").value;
+    const k = await fetchKalshiViaProxy(product);
+    if(k && k.yesMid !== null){
+      kalshiVel.push(k.yesMid);
+      latestKalshi = k;
+      const yesPct = (k.yesMid*100).toFixed(1);
+      const vel = kalshiVel.velocity();
+      const velStr = vel>=0.5?` ▲${vel.toFixed(1)}`:vel<=-0.5?` ▼${Math.abs(vel).toFixed(1)}`:` →`;
+      setText("tbKalshi", `YES ${yesPct}%${velStr}`);
+      setClass("tbKalshi", vel>=2?"yes":vel<=-2?"no":"skip");
+      if($("market") && !$("market").dataset.manualEdit){
+        $("market").value = k.yesMid.toFixed(4);
+      }
+    }
+  }, 12000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BTC REFERENCE FEED
+// ═══════════════════════════════════════════════════════════════
+const btcRef = {
+  price: null,
+  prevPrice: null,
+  trend: 0,
+  update(p){
+    if(this.price) this.trend = p - this.price;
+    this.prevPrice = this.price;
+    this.price = p;
+  },
+  correlation(coinTrend5){
+    if(!this.price || this.trend===0) return { signal:"NO BTC DATA", cls:"skip", boost:0 };
+    const agree = (this.trend>0 && coinTrend5>0)||(this.trend<0 && coinTrend5<0);
+    const disagree = (this.trend>0 && coinTrend5<0)||(this.trend<0 && coinTrend5>0);
+    if(agree) return { signal:"BTC CONFIRMS DIRECTION", cls: this.trend>0?"yes":"no", boost:6 };
+    if(disagree) return { signal:"BTC DIVERGING — CAUTION", cls:"warn", boost:-8 };
+    return { signal:"BTC NEUTRAL", cls:"skip", boost:0 };
+  }
+};
+let btcSocket = null;
+
+function startBtcFeed(){
+  if($("coin").value==="BTC-USD") return;
+  try{ if(btcSocket) btcSocket.close(); }catch(e){}
+  try{
+    btcSocket = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
+    btcSocket.onmessage = e=>{
+      try{ const d=JSON.parse(e.data); if(d.p) btcRef.update(+d.p); }catch(err){}
+    };
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FUTURES PREMIUM
+// ═══════════════════════════════════════════════════════════════
+const futuresPrem = { premium:0, signal:"—", cls:"skip", lastUpdate:0 };
+let futuresTimer = null;
+
+async function fetchFuturesPremium(product){
+  const map={"BTC-USD":"BTCUSDT","ETH-USD":"ETHUSDT","SOL-USD":"SOLUSDT","XRP-USD":"XRPUSDT","DOGE-USD":"DOGEUSDT","BNB-USD":"BNBUSDT"};
+  const sym = map[product];
+  if(!sym) return;
+  try{
+    const d = await fetchJ(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${sym}`, 4000);
+    const mark=+d.markPrice, index=+d.indexPrice;
+    if(!mark||!index) return;
+    const pct = ((mark-index)/index)*100;
+    futuresPrem.premium = pct;
+    futuresPrem.lastUpdate = Date.now();
+    if(pct > 0.04){      futuresPrem.signal="FUTURES BULLISH PREM"; futuresPrem.cls="yes"; }
+    else if(pct > 0.015){ futuresPrem.signal="MILD BULL PREMIUM";   futuresPrem.cls="yes"; }
+    else if(pct < -0.04){ futuresPrem.signal="FUTURES BEARISH DISC"; futuresPrem.cls="no"; }
+    else if(pct < -0.015){futuresPrem.signal="MILD BEAR DISCOUNT";  futuresPrem.cls="no"; }
+    else {                futuresPrem.signal="FUTURES NEUTRAL";      futuresPrem.cls="skip"; }
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WEBSOCKET MANAGER
+// ═══════════════════════════════════════════════════════════════
+let liveState = {
+  coinbase: null, fastPrice: null, fastSource:"—",
+  leader:"WAITING", lagScore:0, spread:0, spreadPct:0,
+  status:"Starting...", lastUpdate:0
+};
+
+function dynThreshold(product){
+  return ["DOGE-USD","XRP-USD"].includes(product) ? {strong:0.035,weak:0.015} : {strong:0.020,weak:0.007};
+}
+
+function updateLeader(product){
+  if(!liveState.coinbase || !liveState.fastPrice) return;
+  liveState.spread = liveState.fastPrice - liveState.coinbase;
+  liveState.spreadPct = (liveState.spread/liveState.coinbase)*100;
+  const {strong,weak} = dynThreshold(product);
+  const p = Math.abs(liveState.spreadPct);
+  if(p > strong){
+    liveState.leader = liveState.fastSource+(liveState.spread>0?" leading UP":" leading DOWN");
+    liveState.lagScore = 3;
+  } else if(p > weak){
+    liveState.leader = "Small "+liveState.fastSource+" lead";
+    liveState.lagScore = 1;
+  } else {
+    liveState.leader = "No clear leader";
+    liveState.lagScore = 0;
+  }
+  updateStatusBar();
+}
+
+function updateStatusBar(){
+  const f=liveState;
+  if(f.coinbase){ setText("tbCoinbase", f.coinbase.toFixed(2)); setClass("tbCoinbase","sb-val info"); }
+  if(f.coinbase && f.fastPrice){
+    const lagTxt = f.lagScore>=3 ? "⚡LAG "+f.lagScore+"/3" : f.lagScore>=1 ? "~lag" : "synced";
+    setText("tbSpread", lagTxt);
+    setClass("tbSpread","sb-val "+(f.lagScore>=3?"warn":f.lagScore>=1?"info":"skip"));
+  }
+  // flow+OB combined
+  const flow=tickStore.flowRatio(30);
+  const book=bookStore.imbalance(0.003);
+  const flowOB = flow.cls!=="skip" ? flow.signal.replace("STRONG ","").replace(" FLOW","").replace(" PRESSURE","") :
+                 book.cls!=="skip" ? book.signal.replace("HEAVY ","").replace(" WALL","").replace(" SIDE HEAVIER","") : "—";
+  const cls2 = flow.cls!=="skip" ? flow.cls : book.cls;
+  setText("tbFlowOB", flowOB);
+  setClass("tbFlowOB","sb-val "+cls2);
+}
+
+function startAllSockets(){
+  const product = $("coin").value;
+  const binSym  = product.replace("-USD","USDT").replace("-USDC","USDT").toLowerCase();
+
+  liveState = { coinbase:null, fastPrice:null, fastSource:"—", leader:"WAITING",
+                lagScore:0, spread:0, spreadPct:0, status:"Connecting...", lastUpdate:0 };
+
+  ["cbTickerWs","cbL2Ws","fastWs","krakenWs"].forEach(k=>{
+    try{ if(window[k]) window[k].close(); }catch(e){}
+  });
+
+  try{
+    window.cbTickerWs = new WebSocket("wss://ws-feed.exchange.coinbase.com");
+    window.cbTickerWs.onopen = ()=>{
+      window.cbTickerWs.send(JSON.stringify({type:"subscribe",product_ids:[product],channels:["ticker"]}));
+    };
+    window.cbTickerWs.onmessage = e=>{
+      try{
+        const d=JSON.parse(e.data);
+        if(d.type==="ticker" && d.price){
+          const price = +d.price;
+          liveState.coinbase = price;
+          liveState.lastUpdate = Date.now();
+          const side = d.side==="buy"?"buy":d.side==="sell"?"sell":"unknown";
+          tickStore.push(price, side, +d.last_size||0);
+          updateLeader(product);
+          updateStatusBar();
+          drawMiniChart();
+          liveState.status = "Live Coinbase WS";
+        }
+      }catch(err){}
+    };
+    window.cbTickerWs.onerror=()=>{ liveState.status="Coinbase WS error"; };
+  }catch(e){}
+
+  try{
+    window.cbL2Ws = new WebSocket("wss://advanced-trade-ws.coinbase.com");
+    window.cbL2Ws.onopen = ()=>{
+      window.cbL2Ws.send(JSON.stringify({type:"subscribe",product_ids:[product],channel:"level2"}));
+    };
+    window.cbL2Ws.onmessage = e=>{
+      try{
+        const d=JSON.parse(e.data);
+        if(d.channel==="l2_data" && d.events){
+          for(const ev of d.events){
+            if(ev.type==="snapshot" && ev.updates){
+              const bids=[], asks=[];
+              for(const u of ev.updates){
+                if(u.side==="bid") bids.push([u.price_level, u.new_quantity]);
+                else               asks.push([u.price_level, u.new_quantity]);
+              }
+              bookStore.applySnapshot(bids, asks);
+            } else if(ev.type==="update" && ev.updates){
+              const changes = ev.updates.map(u=>[u.side==="bid"?"buy":"sell", u.price_level, u.new_quantity]);
+              bookStore.applyUpdate(changes);
+            }
+          }
+          updateStatusBar();
+        }
+      }catch(err){}
+    };
+    window.cbL2Ws.onerror=()=>{};
+  }catch(e){}
+
+  try{
+    window.fastWs = new WebSocket(`wss://stream.binance.com:9443/ws/${binSym}@trade`);
+    window.fastWs.onmessage = e=>{
+      try{
+        const d=JSON.parse(e.data);
+        if(d.p){ liveState.fastPrice=+d.p; liveState.fastSource="Binance"; updateLeader(product); }
+      }catch(err){}
+    };
+    window.fastWs.onerror = ()=>{ startKrakenFallback(product); };
+    window.fastWs.onclose = ()=>{ if(!liveState.fastPrice) startKrakenFallback(product); };
+    setTimeout(()=>{ if(!liveState.fastPrice) startKrakenFallback(product); }, 4000);
+  }catch(e){ startKrakenFallback(product); }
+
+  startBtcFeed();
+  if(futuresTimer) clearInterval(futuresTimer);
+  fetchFuturesPremium(product);
+  futuresTimer = setInterval(()=>fetchFuturesPremium(product), 30000);
+}
+
+function startKrakenFallback(product){
+  const map={"BTC-USD":"BTC/USD","ETH-USD":"ETH/USD","SOL-USD":"SOL/USD","XRP-USD":"XRP/USD","DOGE-USD":"DOGE/USD"};
+  const sym=map[product]; if(!sym) return;
+  try{
+    window.krakenWs = new WebSocket("wss://ws.kraken.com/v2");
+    window.krakenWs.onopen=()=>{
+      window.krakenWs.send(JSON.stringify({method:"subscribe",params:{channel:"ticker",symbol:[sym]}}));
+    };
+    window.krakenWs.onmessage=e=>{
+      try{
+        const d=JSON.parse(e.data);
+        if(d.channel==="ticker" && d.data?.length){
+          const p=+(d.data[0].last||d.data[0].bid);
+          if(p>0){ liveState.fastPrice=p; liveState.fastSource="Kraken"; updateLeader(product); }
+        }
+      }catch(err){}
+    };
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MINI CHART
+// ═══════════════════════════════════════════════════════════════
+function drawMiniChart(){
+  const canvas = $("miniChart"); if(!canvas) return;
+  const dpr = window.devicePixelRatio||1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 48 * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
+  const w=rect.width, h=48;
+  const ticks = tickStore.ticks.slice(-100);
+  if(ticks.length<2){ ctx.clearRect(0,0,w,h); return; }
+  const prices = ticks.map(t=>t.price);
+  const mn=Math.min(...prices), mx=Math.max(...prices);
+  const range=mx-mn||1;
+  ctx.clearRect(0,0,w,h);
+  const target = +$("target").value;
+  if(target>0 && target>=mn && target<=mx){
+    const ty = h-((target-mn)/range)*(h-10)-5;
+    ctx.strokeStyle="#f1c40f44"; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(0,ty); ctx.lineTo(w,ty); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  const lastP = prices[prices.length-1];
+  const col = lastP > (target||0) ? "#2ecc71" : "#e74c3c";
+  ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.beginPath();
+  prices.forEach((p,i)=>{
+    const x=i/(prices.length-1)*w;
+    const y=h-((p-mn)/range)*(h-10)-5;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  const grad=ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,col+"44"); grad.addColorStop(1,col+"00");
+  ctx.fillStyle=grad;
+  ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath(); ctx.fill();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KALSHI FETCH
+// ═══════════════════════════════════════════════════════════════
+function kalshiUrl(series){
+  return `https://api.elections.kalshi.com/trade-api/v2/markets?series_ticker=${series}&status=open&limit=5`;
+}
+
+function parseKalshi(text){
+  try{
+    const data = typeof text==="string"?JSON.parse(text):text;
+    if(!data.markets?.length) return null;
+    const m = data.markets.slice().sort((a,b)=>new Date(a.close_time)-new Date(b.close_time))[0];
+    const strike = m.floor_strike??m.strike_value??m.cap_strike??null;
+    if(strike===null) return null;
+    const toFrac=(dStr,cInt)=>{ if(dStr!=null&&dStr!=="") return +dStr; if(cInt!=null&&cInt!=="") return cInt/100; return null; };
+    const yesBid=toFrac(m.yes_bid_dollars??m.yes_bid_dollar, m.yes_bid);
+    const yesAsk=toFrac(m.yes_ask_dollars??m.yes_ask_dollar, m.yes_ask);
+    const lastP =toFrac(m.last_price_dollars??m.last_price_dollar, m.last_price);
+    const mid = (yesBid!=null&&yesAsk!=null)?(yesBid+yesAsk)/2:(lastP??yesBid);
+    return {target:+strike, ticker:m.ticker, closeTime:m.close_time, yesBid, yesAsk, yesMid:mid, noMid:mid==null?null:1-mid};
+  }catch(e){ return null; }
+}
+
+async function fetchKalshiViaProxy(product){
+  const series=KALSHI_SERIES[product]; if(!series) return null;
+  const enc=encodeURIComponent(kalshiUrl(series));
+  const attempts=[
+    ()=>fetchJ(`https://api.allorigins.win/get?url=${enc}`,3500).then(j=>parseKalshi(j.contents)),
+    ()=>fetchJ(`https://corsproxy.io/?url=${enc}`,3500).then(j=>parseKalshi(JSON.stringify(j))),
+    ()=>fetchJ(`https://api.codetabs.com/v1/proxy?quest=${enc}`,3500).then(j=>parseKalshi(j))
+  ];
+  try{
+    return await Promise.any(attempts.map(fn=>fn().then(x=>{ if(!x) throw new Error("null"); return x; })));
+  }catch(e){ return null; }
+}
+
+async function refreshKalshiTarget(showStatus){
+  if(showStatus) clearErr();
+  const product=$("coin").value;
+  const btn=$("btnTargetRefresh"); if(btn) btn.textContent="…";
+  const k=await fetchKalshiViaProxy(product);
+  if(btn) btn.textContent="↻";
+  if(!k){ latestKalshi=null; if(showStatus) showErr("Kalshi pull failed — enter target manually."); return null; }
+  latestKalshi=k;
+  if(!isNaN(k.target)&&k.target>0) $("target").value=k.target;
+  if(k.yesMid!=null&&!isNaN(k.yesMid)){
+    $("market").value=k.yesMid.toFixed(4);
+    kalshiVel.push(k.yesMid);
+  }
+  return k;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REST CANDLE FALLBACK
+// ═══════════════════════════════════════════════════════════════
+async function getRestCandles(product, granularity=60){
+  const d=await fetchJ(`https://api.exchange.coinbase.com/products/${product}/candles?granularity=${granularity}`);
+  if(!Array.isArray(d)||!d.length) throw new Error("No candles");
+  return d.map(c=>({time:+c[0]*1000,low:+c[1],high:+c[2],open:+c[3],close:+c[4],volume:+c[5]}))
+           .sort((a,b)=>a.time-b.time);
+}
+
+async function getRestTicker(product){
+  const d=await fetchJ(`https://api.exchange.coinbase.com/products/${product}/ticker`);
+  if(!d.price) throw new Error("No ticker");
+  return +d.price;
+}
+
+async function fetchSecondRest(product){
+  const sym=product.replace("-USD","USDT");
+  const krakenMap={"BTC-USD":"XBTUSD","ETH-USD":"ETHUSD","SOL-USD":"SOLUSD","XRP-USD":"XRPUSD","DOGE-USD":"DOGEUSD"};
+  try{ const d=await fetchJ(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`,3000); if(d.price) return {ok:true,source:"Binance",price:+d.price}; }catch(e){}
+  try{ const d=await fetchJ(`https://api.binance.us/api/v3/ticker/price?symbol=${sym}`,3000); if(d.price) return {ok:true,source:"Binance.US",price:+d.price}; }catch(e){}
+  try{
+    const pair=krakenMap[product];
+    if(pair){ const d=await fetchJ(`https://api.kraken.com/0/public/Ticker?pair=${pair}`,3000); const k=d.result?Object.keys(d.result)[0]:null; if(k){ const p=(+d.result[k].a[0]+ +d.result[k].b[0])/2; if(p>0) return {ok:true,source:"Kraken",price:p}; } }
+  }catch(e){}
+  return {ok:false,source:"Second",price:0};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TECHNICAL INDICATORS
+// ═══════════════════════════════════════════════════════════════
+function RSI(closes){
+  if(closes.length<2) return 50;
+  const period=Math.min(14,closes.length-1);
+  let g=0,l=0;
+  for(let i=1;i<=period;i++){ const d=closes[i]-closes[i-1]; d>0?g+=d:l-=d; }
+  let ag=g/period, al=l/period;
+  for(let i=period+1;i<closes.length;i++){
+    const d=closes[i]-closes[i-1];
+    ag=(ag*(period-1)+(d>0?d:0))/period;
+    al=(al*(period-1)+(d<0?-d:0))/period;
+  }
+  return 100-(100/(1+(al===0?100:ag/al)));
+}
+
+function EMA(values, period){
+  if(!values.length) return 0;
+  const k=2/(period+1);
+  const seedLen=Math.min(period,values.length);
+  let ema=values.slice(0,seedLen).reduce((a,b)=>a+b,0)/seedLen;
+  for(let i=seedLen;i<values.length;i++) ema=values[i]*k+ema*(1-k);
+  return ema;
+}
+
+function VOL(closes){
+  let s=0; for(let i=1;i<closes.length;i++) s+=Math.abs(closes[i]-closes[i-1]);
+  return s/Math.max(1,closes.length-1);
+}
+
+function decayVWAP(candles, halfLifeCandles=15){
+  let pv=0,v=0; const n=candles.length;
+  candles.forEach((c,i)=>{
+    const typical=(c.high+c.low+c.close)/3;
+    const age=n-1-i;
+    const weight=Math.exp(-age*Math.log(2)/halfLifeCandles);
+    pv+=typical*c.volume*weight; v+=c.volume*weight;
+  });
+  return v?pv/v:candles[candles.length-1].close;
+}
+
+function plainVWAP(candles){
+  let pv=0,v=0;
+  candles.forEach(c=>{ const t=(c.high+c.low+c.close)/3; pv+=t*c.volume; v+=c.volume; });
+  return v?pv/v:candles[candles.length-1].close;
+}
+
+function avgVol(candles){ return candles.reduce((s,c)=>s+c.volume,0)/Math.max(1,candles.length); }
+
+function momentumAccel(candles){
+  if(candles.length<6) return {signal:"NONE",cls:"skip",detail:"—",accel:0};
+  const last3=candles.slice(-3), prev3=candles.slice(-6,-3);
+  const lastMove=last3[last3.length-1].close-last3[0].open;
+  const prevMove=prev3[prev3.length-1].close-prev3[0].open;
+  const accel=lastMove-prevMove;
+  const lastVol=last3.reduce((s,c)=>s+c.volume,0);
+  const prevVol=prev3.reduce((s,c)=>s+c.volume,0);
+  const volRatio=prevVol>0?lastVol/prevVol:1;
+  const ref=candles[candles.length-1].close||1;
+  const pct=Math.abs(lastMove/ref)*100;
+  if(pct>=0.07&&volRatio>=1.35){
+    if(lastMove>0&&prevMove>=0) return {signal:"BULLISH ACCELERATION",cls:"yes",detail:`+${pct.toFixed(3)}% 3c, vol×${volRatio.toFixed(1)}`,accel};
+    if(lastMove<0&&prevMove<=0) return {signal:"BEARISH ACCELERATION",cls:"no", detail:`${pct.toFixed(3)}% drop 3c, vol×${volRatio.toFixed(1)}`,accel};
+    return {signal:"REVERSAL SURGE",cls:"warn",detail:`Reversal vol×${volRatio.toFixed(1)}`,accel};
+  }
+  if(pct>=0.04&&volRatio>=1.15)
+    return {signal:lastMove>0?"MILD BULL PUSH":"MILD BEAR PUSH",cls:lastMove>0?"yes":"no",detail:`${pct.toFixed(3)}% vol×${volRatio.toFixed(1)}`,accel};
+  return {signal:"NONE",cls:"skip",detail:"No accel",accel};
+}
+
+function htfBias(price, candles){
+  const closes=candles.map(c=>c.close);
+  const getPAgo=(m)=>{ const t=Date.now()-m*60000; return candles.reduce((p,c)=>Math.abs(c.time-t)<Math.abs(p.time-t)?c:p).close; };
+  const p30=getPAgo(30),p60=getPAgo(60),p120=getPAgo(120);
+  const last60=candles.slice(-60);
+  const vwap60=plainVWAP(last60.length?last60:candles);
+  const ema60=EMA(closes.slice(-90),60);
+  const high60=Math.max(...(last60.length?last60:candles).map(c=>c.high));
+  const low60 =Math.min(...(last60.length?last60:candles).map(c=>c.low));
+  const latest=candles[candles.length-1];
+  const range60=Math.max(0.000001,high60-low60);
+  const rangePos=((price-low60)/range60)*100;
+  const avgVol60=avgVol((last60.length?last60:candles).slice(0,-1));
+  const volSpike60=latest.volume>avgVol60*1.5;
+  const upperWickPct=(latest.high-Math.max(latest.open,latest.close))/Math.max(0.000001,latest.high-latest.low);
+  const lowerWickPct=(Math.min(latest.open,latest.close)-latest.low)/Math.max(0.000001,latest.high-latest.low);
+  const t30=price-p30, t60=price-p60, t120=price-p120;
+  let score=0;
+  if(t30>0)score++;else score--;
+  if(t60>0)score++;else score--;
+  if(t120>0)score++;else score--;
+  if(price>vwap60)score++;else score--;
+  if(price>ema60)score++;else score--;
+  if(volSpike60&&score>0)score++;
+  if(volSpike60&&score<0)score--;
+  if(upperWickPct>0.45)score--;
+  if(lowerWickPct>0.45)score++;
+  let suggestion="HTF BIAS: NEUTRAL / WAIT", cls="skip";
+  if(score>=4){ suggestion="HTF BIAS: YES SIDE — confirm 15m"; cls="yes"; }
+  else if(score<=-4){ suggestion="HTF BIAS: NO SIDE — confirm 15m"; cls="no"; }
+  const extendedMove=Math.abs(t60)>Math.max(VOL(closes.slice(-30))*6,price*0.0015);
+  const wickWarn=upperWickPct>0.45?"Upper wick YES danger":lowerWickPct>0.45?"Lower wick NO danger":"No major wick warning";
+  return {score,suggestion,cls,trend30:t30,trend60:t60,trend120:t120,vwap60,ema60,high60,low60,rangePos,volumeSpike60:volSpike60,extendedMove,wickWarning:wickWarn};
+}
+
+function getTimeLeft(){
+  const fifteen=15*60*1000;
+  return Math.max(0,(Math.floor(Date.now()/fifteen)*fifteen+fifteen-Date.now())/60000);
+}
+
+function projectedSettlement(price, latestAvg, trend5, trend10, trend15, timeLeft){
+  const urgency = 1 - Math.exp(-((15-timeLeft)/15)*2.5);
+  const trendProj = trend5*0.50+trend10*0.30+trend15*0.20;
+  return (latestAvg*(0.65+urgency*0.25)) + (price*(0.35-urgency*0.25)) + (trendProj*0.12);
+}
+
+function tickIndicators(){
+  const closes10 = tickStore.getRecentCloses(10, 30);
+  if(closes10.length < 3) return null;
+  return {
+    ema5tick:  EMA(closes10, 3),
+    ema13tick: EMA(closes10, 8),
+    rsiTick:   RSI(closes10.slice(-15)),
+    volTick:   VOL(closes10.slice(-10)),
+    micro30vwap: tickStore.tickVWAP(120000),
+    trend30s:    closes10.length>=4 ? closes10[closes10.length-1]-closes10[closes10.length-4] : 0,
+    trend60s:    closes10.length>=7 ? closes10[closes10.length-1]-closes10[closes10.length-7] : 0,
+  };
+}
+
+const fairHistory = [];
+function trackFairDivergence(fairYes, marketYes){
+  const now=Date.now();
+  fairHistory.push({time:now, edge: fairYes-marketYes});
+  if(fairHistory.length>6) fairHistory.shift();
+  if(fairHistory.length<2) return {signal:"—",cls:"skip",earlyEntry:false};
+  const first=fairHistory[0].edge, last=fairHistory[fairHistory.length-1].edge;
+  const widening=Math.abs(last)>Math.abs(first);
+  const consistent=fairHistory.every(h=>Math.sign(h.edge)===Math.sign(last));
+  if(consistent && Math.abs(last)>=0.06 && widening){
+    const side=last>0?"YES":"NO";
+    return {signal:`EARLY ENTRY: ${side} MISPRICING WIDENING (${(Math.abs(last)*100).toFixed(1)} pts)`,cls:last>0?"yes":"no",earlyEntry:true,edge:last};
+  }
+  if(consistent && Math.abs(last)>=0.08){
+    return {signal:`MISPRICING HOLD: ${last>0?"YES":"NO"} edge ${(Math.abs(last)*100).toFixed(1)} pts`,cls:last>0?"yes":"no",earlyEntry:false,edge:last};
+  }
+  return {signal:"No sustained divergence",cls:"skip",earlyEntry:false,edge:last};
+}
+
+function applyConfirm(product, rawDecision, timing){
+  const ks="sig_"+product, kc="sigC_"+product;
+  const last=localStorage.getItem(ks);
+  let cnt=+(localStorage.getItem(kc)||0);
+  if(rawDecision===last && rawDecision!=="SKIP" && rawDecision!=="WATCH ONLY") cnt++;
+  else cnt=1;
+  localStorage.setItem(ks,rawDecision); localStorage.setItem(kc,cnt);
+  if((rawDecision==="BET YES"||rawDecision==="BET NO")&&cnt<2)
+    return {decision:"WATCH ONLY",cls:"skip",timing:"WAIT — 2 CONFIRMATIONS NEEDED",confirmationCount:cnt};
+  return {decision:rawDecision,cls:rawDecision==="BET YES"?"yes":rawDecision==="BET NO"?"no":"skip",timing,confirmationCount:cnt};
+}
+
+function getSnap(product){ try{ return JSON.parse(localStorage.getItem("snap_"+product)||"null"); }catch(e){ return null; } }
+function setSnap(product, s){
+  try{
+    const h=JSON.parse(localStorage.getItem("snapH_"+product)||"[]");
+    h.push(s); if(h.length>4) h.shift();
+    localStorage.setItem("snapH_"+product,JSON.stringify(h));
+  }catch(e){}
+  localStorage.setItem("snap_"+product,JSON.stringify(s));
+}
+function getSnapHist(product){ try{ return JSON.parse(localStorage.getItem("snapH_"+product)||"[]"); }catch(e){ return []; } }
+
+function vwapOverride({price,target,vwap,vol,trend5,trend10,yesProb,noProb,timeLeft}){
+  const cushion=price-target, absCush=Math.abs(cushion);
+  const weak=absCush<vol*2.0, veryStrong=absCush>vol*2.5;
+  const aboveT=price>target,belowT=price<target,aboveV=price>vwap,belowV=price<vwap;
+  const t5b=trend5<0,t10b=trend10<0,t5u=trend5>0,t10u=trend10>0;
+  const t10sp=trend10>80, t10sn=trend10<-80;
+  let signal="NO SPECIAL VWAP OVERRIDE",action="FOLLOW NORMAL ENGINE",cls="skip",confidenceBoost=0,reason="Use normal decision engine.";
+  if(aboveT&&weak&&belowV&&t5b&&t10b&&timeLeft>5&&yesProb>65){ signal="BEARISH OVERRIDE → BET NO";action="BET NO";cls="no";confidenceBoost=18;reason="Above target, below VWAP, both bearish — possible bull trap."; }
+  else if(yesProb>65&&t5b&&t10b&&belowV){ signal="BULL TRAP DETECTED";action="BET NO or WAIT";cls="no";confidenceBoost=12;reason="High YES prob but below VWAP + bearish trends."; }
+  else if(belowT&&weak&&aboveV&&t5u&&t10u&&timeLeft>5&&noProb>65){ signal="BULLISH OVERRIDE → BET YES";action="BET YES";cls="yes";confidenceBoost=18;reason="Below target, above VWAP, both bullish — possible bear trap."; }
+  else if(noProb>65&&t5u&&t10u&&aboveV){ signal="BEAR TRAP DETECTED";action="BET YES or WAIT";cls="yes";confidenceBoost=12;reason="High NO prob but above VWAP + bullish trends."; }
+  if(action.includes("NO")&&t10sp&&!belowV){ signal="AVOID NO";action="WAIT";cls="warn";confidenceBoost=-10;reason="10m strongly positive + above VWAP — NO is unsafe."; }
+  if(action.includes("YES")&&t10sn&&!aboveV){ signal="AVOID YES";action="WAIT";cls="warn";confidenceBoost=-10;reason="10m strongly negative + below VWAP — YES is unsafe."; }
+  return {signal,action,cls,confidenceBoost,reason,cushion,weakCushion:weak,veryStrongCushion:veryStrong};
+}
+
+function exchangePressure(cbP, secondP, t5, t10, mktYes, mktNo){
+  const spread=secondP-cbP, pct=cbP?(spread/cbP)*100:0;
+  let pressure="NEUTRAL",cls="skip",reason="No major exchange pressure.";
+  if(pct>=0.03&&t5>0&&t10>0){ pressure="BULLISH EXCHANGE PRESSURE";cls="yes";reason="Second source above Coinbase + bullish trends.";if(mktYes<0.55)reason+=" Kalshi YES may be lagging."; }
+  else if(pct<=-0.03&&t5<0&&t10<0){ pressure="BEARISH EXCHANGE PRESSURE";cls="no";reason="Second source below Coinbase + bearish trends.";if(mktNo<0.55)reason+=" Kalshi NO may be lagging."; }
+  return {spread,spreadPct:pct,pressure,cls,reason};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MASTER ANALYSIS ENGINE  v5.0 (unchanged)
+// ═══════════════════════════════════════════════════════════════
+function analyzeV5({product, price, target, marketInput, candles, restCandles, p5, p10, p15, latestAvg, secondPrice}){
+  const timeLeft=getTimeLeft();
+  const closes=candles.map(c=>c.close);
+  const recent30=candles.slice(-30);
+  const latest=candles[candles.length-1];
+  const ema9  = EMA(closes.slice(-30), 9);
+  const ema21 = EMA(closes.slice(-30), 21);
+  const vwap  = decayVWAP(recent30, 12);
+  const vwapPlain = plainVWAP(recent30);
+  const rsi   = RSI(closes.slice(-20));
+  const vol   = VOL(closes.slice(-20));
+  const avgVolume = avgVol(recent30.slice(0,-1));
+  const volumeSpike = latest.volume > avgVolume*1.3;
+  const latestGreen = latest.close>latest.open;
+  const latestRed   = latest.close<latest.open;
+  const trend5  = price-p5;
+  const trend10 = price-p10;
+  const trend15 = price-p15;
+  const t5pos=trend5>0, t10pos=trend10>0, t15pos=trend15>0;
+  const momentum = momentumAccel(recent30);
+  const htf = htfBias(price, candles);
+  const tick = tickIndicators();
+  const proj = projectedSettlement(price, latestAvg, trend5, trend10, trend15, timeLeft);
+  const avgCushion = proj - target;
+  const cushionThresh = vol*1.5;
+  const targetMagnet = Math.abs(avgCushion)<cushionThresh*1.15;
+  const flow  = tickStore.flowRatio(30);
+  const book  = bookStore.imbalance(0.003);
+  const btcCorr = btcRef.correlation(trend5);
+  const velSig  = kalshiVel.lagSignal(price, getSnap(product)?.price||price);
+  const persLag = kalshiVel.persistentLag(price);
+  const rawMktYes = (!isNaN(marketInput)&&marketInput>=0&&marketInput<=1) ? marketInput : (latestKalshi?.yesMid ?? 0.50);
+  const mktYes=rawMktYes, mktNo=1-mktYes;
+  let yes=0.50, confidence=50;
+  const reasons=[], warnings=[];
+  if(proj>target){    yes+=0.16;confidence+=10;reasons.push("Projected avg above target → YES"); }
+  else {              yes-=0.16;confidence+=10;reasons.push("Projected avg below target → NO"); }
+  if(latestAvg>target){yes+=0.09;confidence+=7;reasons.push("Latest 1m avg above target"); }
+  else {              yes-=0.09;confidence+=7;reasons.push("Latest 1m avg below target"); }
+  if(price>target){   yes+=0.06;reasons.push("Live price above target"); }
+  else {              yes-=0.06;reasons.push("Live price below target"); }
+  if(t5pos&&t10pos){  yes+=0.07;confidence+=8;reasons.push("5m+10m both positive"); }
+  if(!t5pos&&!t10pos){yes-=0.07;confidence+=8;reasons.push("5m+10m both negative"); }
+  if(ema9>ema21){ yes+=0.05;confidence+=4;reasons.push("EMA9>EMA21 bullish"); }
+  else {          yes-=0.05;confidence+=4;reasons.push("EMA9<EMA21 bearish"); }
+  if(price>vwap){  yes+=0.05;reasons.push("Price above decay-VWAP"); }
+  else {           yes-=0.05;reasons.push("Price below decay-VWAP"); }
+  if(latestGreen){ yes+=0.03;reasons.push("Green candle"); }
+  else if(latestRed){ yes-=0.03;reasons.push("Red candle"); }
+  if(rsi>52&&rsi<68){     yes+=0.04;confidence+=3;reasons.push(`RSI ${rsi.toFixed(0)} bullish zone`); }
+  else if(rsi<48&&rsi>32){yes-=0.04;confidence+=3;reasons.push(`RSI ${rsi.toFixed(0)} bearish zone`); }
+  else if(rsi>=70){       yes-=0.04;confidence-=3;warnings.push("RSI overbought"); }
+  else if(rsi<=30){       yes+=0.04;confidence-=3;warnings.push("RSI oversold"); }
+  else {                  confidence-=8;warnings.push("RSI neutral — weak momentum"); }
+  if(volumeSpike){ const boost=yes>=0.50?0.03:-0.03; yes+=boost;confidence+=4;reasons.push("Volume spike"); }
+  if(momentum.signal==="BULLISH ACCELERATION"){     yes+=0.06;confidence+=7;reasons.push("Bullish acceleration: "+momentum.detail); }
+  else if(momentum.signal==="BEARISH ACCELERATION"){yes-=0.06;confidence+=7;reasons.push("Bearish acceleration: "+momentum.detail); }
+  else if(momentum.signal==="MILD BULL PUSH"){      yes+=0.03;reasons.push("Mild bull push: "+momentum.detail); }
+  else if(momentum.signal==="MILD BEAR PUSH"){      yes-=0.03;reasons.push("Mild bear push: "+momentum.detail); }
+  else if(momentum.signal==="REVERSAL SURGE"){      confidence-=10;warnings.push("Reversal surge — direction unclear"); }
+  if(flow.cls==="yes"&&flow.ratio>=0.65){       yes+=0.05;confidence+=6;reasons.push(`Buy flow ${(flow.ratio*100).toFixed(0)}%`); }
+  else if(flow.cls==="yes"&&flow.ratio>=0.60){  yes+=0.03;reasons.push(`Buy pressure ${(flow.ratio*100).toFixed(0)}%`); }
+  else if(flow.cls==="no"&&flow.ratio<=0.35){   yes-=0.05;confidence+=6;reasons.push(`Sell flow ${(flow.ratio*100).toFixed(0)}%`); }
+  else if(flow.cls==="no"&&flow.ratio<=0.40){   yes-=0.03;reasons.push(`Sell pressure ${(flow.ratio*100).toFixed(0)}%`); }
+  if(book.cls==="yes"&&book.ratio>=0.65){       yes+=0.04;confidence+=5;reasons.push(`Order book: ${book.signal}`); }
+  else if(book.cls==="yes"){                    yes+=0.02;reasons.push("Bids heavier"); }
+  else if(book.cls==="no"&&book.ratio<=0.35){   yes-=0.04;confidence+=5;reasons.push(`Order book: ${book.signal}`); }
+  else if(book.cls==="no"){                     yes-=0.02;reasons.push("Asks heavier"); }
+  if(futuresPrem.premium>0.04){         yes+=0.04;confidence+=4;reasons.push("Futures bullish premium"); }
+  else if(futuresPrem.premium>0.015){   yes+=0.02;reasons.push("Mild futures premium"); }
+  else if(futuresPrem.premium<-0.04){   yes-=0.04;confidence+=4;reasons.push("Futures bearish discount"); }
+  else if(futuresPrem.premium<-0.015){  yes-=0.02;reasons.push("Mild futures discount"); }
+  if(product!=="BTC-USD"){
+    confidence+=btcCorr.boost;
+    if(btcCorr.boost>0) reasons.push(btcCorr.signal);
+    else if(btcCorr.boost<0) warnings.push(btcCorr.signal);
+  }
+  if(velSig.type==="price_leads"){
+    if(velSig.cls==="yes"){ yes+=0.04;confidence+=5;reasons.push(velSig.signal); }
+    else {                  yes-=0.04;confidence+=5;reasons.push(velSig.signal); }
+  } else if(velSig.type==="kalshi_leads"){
+    if(velSig.cls==="yes"){ yes+=0.03;reasons.push("Kalshi leading bullish: +"+Math.abs(velSig.vel).toFixed(1)+" pts/min"); }
+    else {                  yes-=0.03;reasons.push("Kalshi leading bearish: "+Math.abs(velSig.vel).toFixed(1)+" pts/min"); }
+  }
+  if(persLag){ confidence+=3;reasons.push("Persistent Kalshi lag detected"); }
+  if(tick){
+    if(tick.ema5tick>tick.ema13tick){ yes+=0.03;reasons.push("Tick EMA bullish cross"); }
+    else {                           yes-=0.03;reasons.push("Tick EMA bearish cross"); }
+    if(price>tick.micro30vwap){ yes+=0.02;reasons.push("Above 2m decay VWAP"); }
+    else {                      yes-=0.02;reasons.push("Below 2m decay VWAP"); }
+    if(tick.trend30s>0&&tick.trend60s>0){ yes+=0.03;confidence+=3;reasons.push("30s+60s tick trends positive"); }
+    else if(tick.trend30s<0&&tick.trend60s<0){ yes-=0.03;confidence+=3;reasons.push("30s+60s tick trends negative"); }
+  }
+  if(liveState.lagScore>=3){
+    const up=liveState.leader.includes("UP");
+    yes+=up?0.04:-0.04;confidence+=5;
+    reasons.push("Fast lag "+liveState.lagScore+"/3: "+liveState.leader);
+  } else if(liveState.lagScore>=1){
+    reasons.push("Small exchange spread: "+liveState.leader);
+  }
+  if(!isNaN(mktYes)&&mktYes>=0&&mktYes<=1){
+    yes=(0.78*yes)+(0.22*mktYes);
+    reasons.push("Blended with Kalshi market probability");
+  }
+  const volPct=vol/price;
+  const volHigh=volPct>0.0018, volVeryHigh=volPct>0.003;
+  if(volHigh){ confidence-=12;warnings.push("High volatility — can flip quickly"); }
+  if(volVeryHigh){ confidence-=25;warnings.push("Very high volatility — avoid unless very strong"); }
+  if(targetMagnet){ confidence-=25;warnings.push("Target magnet zone — projected avg too close"); }
+  if(timeLeft>6&&volHigh){ confidence-=8;warnings.push(">6min + high vol — early signal may flip"); }
+  if((trend5>0&&trend10<0)||(trend5<0&&trend10>0)){ confidence-=15;warnings.push("Mixed 5m/10m trends — unstable"); }
+  if(timeLeft<=2){ confidence+=5;reasons.push("Low time — current avg dominates"); }
+  yes=clamp(yes,0.05,0.95);
+  const no=1-yes;
+  confidence=clamp(Math.round(confidence),0,100);
+  let yesScore=0, noScore=0;
+  if(price>target)yesScore++;else noScore++;
+  if(latestAvg>target)yesScore++;else noScore++;
+  if(proj>target)yesScore++;else noScore++;
+  if(t5pos&&t10pos)yesScore++;
+  if(!t5pos&&!t10pos)noScore++;
+  if(ema9>ema21)yesScore++;else noScore++;
+  if(price>vwap)yesScore++;else noScore++;
+  if(latestGreen)yesScore++;else if(latestRed)noScore++;
+  if(rsi>52&&rsi<68)yesScore++;else if(rsi<48&&rsi>32)noScore++;
+  if(flow.cls==="yes")yesScore++;else if(flow.cls==="no")noScore++;
+  if(book.cls==="yes")yesScore++;else if(book.cls==="no")noScore++;
+  if(futuresPrem.premium>0.02)yesScore++;else if(futuresPrem.premium<-0.02)noScore++;
+  if(volumeSpike){ yesScore>noScore?yesScore++:noScore++; }
+  const safeVol=Math.max(vol||0.0001,Math.abs(price)*0.00005);
+  let fairYes=0.50;
+  fairYes+=clamp((price-target)/(safeVol*4),-1.5,1.5)*0.14;
+  fairYes+=clamp((proj-target)/(safeVol*4),-1.5,1.5)*0.12;
+  if(latestAvg>target)fairYes+=0.04;else fairYes-=0.04;
+  if(t5pos&&t10pos)fairYes+=0.07;if(!t5pos&&!t10pos)fairYes-=0.07;
+  if(t15pos)fairYes+=0.03;else fairYes-=0.03;
+  if(price>vwap)fairYes+=0.04;else fairYes-=0.04;
+  if(ema9>ema21)fairYes+=0.04;else fairYes-=0.04;
+  if(rsi>52&&rsi<68)fairYes+=0.03;else if(rsi<48&&rsi>32)fairYes-=0.03;
+  if(flow.cls==="yes")fairYes+=0.04;else if(flow.cls==="no")fairYes-=0.04;
+  if(book.cls==="yes")fairYes+=0.03;else if(book.cls==="no")fairYes-=0.03;
+  if(futuresPrem.premium>0.03)fairYes+=0.03;else if(futuresPrem.premium<-0.03)fairYes-=0.03;
+  if(targetMagnet)fairYes=fairYes*0.75+0.50*0.25;
+  fairYes=clamp(fairYes,0.05,0.95);
+  const fairNo=1-fairYes;
+  const edgeYes=fairYes-mktYes, edgeNo=fairNo-mktNo;
+  const diverg=trackFairDivergence(fairYes,mktYes);
+  const snap=getSnap(product);
+  const now=Date.now();
+  let priceMovePct=0,marketMovePts=0,secondsSince=0,lagLabel="Need refresh",lagClass="skip",lagScore=0;
+  if(snap&&snap.price&&snap.mktYes!=null){
+    secondsSince=Math.max(1,(now-snap.time)/1000);
+    priceMovePct=((price-snap.price)/snap.price)*100;
+    marketMovePts=(mktYes-snap.mktYes)*100;
+    const ap=Math.abs(priceMovePct),am=Math.abs(marketMovePts);
+    const hist=getSnapHist(product);
+    let persLagSnap=false;
+    if(hist.length>=2){ const old=hist[0]; const km=Math.abs((mktYes-old.mktYes)*100); if(Math.abs((price-old.price)/old.price)*100>=0.12&&km<=3) persLagSnap=true; }
+    if((ap>=0.07&&am<=2.5&&secondsSince<=180)||persLagSnap){
+      lagScore=3;lagClass=priceMovePct>0?"yes":"no";
+      lagLabel=(priceMovePct>0?"Kalshi lagging bullish":"Kalshi lagging bearish")+(persLagSnap?" (persistent)":"");
+    } else if(ap>=0.04&&am<=1.5&&secondsSince<=180){
+      lagScore=2;lagClass=priceMovePct>0?"yes":"no";
+      lagLabel=priceMovePct>0?"Small bullish lag":"Small bearish lag";
+    } else if(am>=5){ lagClass="warn";lagLabel="Kalshi already repricing"; }
+    else lagLabel="No major lag";
+  }
+  setSnap(product,{time:now,price,mktYes,target});
+  let repricingSpeed=0,repricingLabel="Need refresh",repricingClass="skip";
+  if(secondsSince>0){
+    repricingSpeed=marketMovePts/Math.max(1,secondsSince/60);
+    if(Math.abs(repricingSpeed)>=8){ repricingClass=repricingSpeed>0?"yes":"no";repricingLabel=repricingSpeed>0?"YES repricing fast":"NO repricing fast"; }
+    else if(Math.abs(repricingSpeed)>=3){ repricingClass=repricingSpeed>0?"yes":"no";repricingLabel=repricingSpeed>0?"YES repricing slowly":"NO repricing slowly"; }
+    else repricingLabel="Repricing slow/flat";
+  }
+  let microScore=0;
+  const microReasons=[];
+  const mispricingSide = edgeYes>=0.12?"YES":edgeNo>=0.12?"NO":Math.max(Math.abs(edgeYes),Math.abs(edgeNo))>=0.07?(edgeYes>edgeNo?"YES":"NO"):"NONE";
+  const mispricingClass= mispricingSide==="YES"?"yes":mispricingSide==="NO"?"no":"skip";
+  let mispricingLabel= mispricingSide==="NONE"?"No clear mispricing":
+    (edgeYes>=0.12?`YES undervalued ${(edgeYes*100).toFixed(1)} pts`:
+     edgeNo>=0.12?`NO undervalued ${(edgeNo*100).toFixed(1)} pts`:
+     `${mispricingSide} mild edge ${(Math.max(Math.abs(edgeYes),Math.abs(edgeNo))*100).toFixed(1)} pts`);
+  if(mispricingSide==="YES"&&edgeYes>=0.12){microScore+=3;microReasons.push("YES fair>Kalshi");}
+  if(mispricingSide==="NO"&&edgeNo>=0.12){microScore+=3;microReasons.push("NO fair>Kalshi");}
+  if(lagScore===3){microScore+=3;microReasons.push("Strong lag");}
+  if(lagScore===2){microScore+=2;microReasons.push("Small lag");}
+  if(Math.abs(price-target)>=safeVol*2.5){microScore+=2;microReasons.push("Strong cushion");}
+  if(Math.abs(price-target)>=safeVol*4){microScore+=1;microReasons.push("Very strong cushion");}
+  if(timeLeft>=3&&timeLeft<=9){microScore+=1;microReasons.push("Scalp window");}
+  if(timeLeft>10){microScore-=1;microReasons.push("Too early");}
+  if(timeLeft<2.5){microScore-=2;microReasons.push("Too late");}
+  if(targetMagnet){microScore-=2;microReasons.push("Magnet risk");}
+  const bullAgree=price>target&&t5pos&&t10pos&&price>vwap;
+  const bearAgree=price<target&&!t5pos&&!t10pos&&price<vwap;
+  if(mispricingSide==="YES"&&bullAgree){microScore+=2;microReasons.push("YES direction agrees");}
+  if(mispricingSide==="NO"&&bearAgree){microScore+=2;microReasons.push("NO direction agrees");}
+  if(Math.abs(repricingSpeed)>=8){microScore-=1;microReasons.push("Already repricing");}
+  if(flow.cls===mispricingSide.toLowerCase()){microScore+=1;microReasons.push("Trade flow confirms");}
+  if(book.cls===mispricingSide.toLowerCase()){microScore+=1;microReasons.push("Order book confirms");}
+  if(diverg.earlyEntry){microScore+=2;microReasons.push("Divergence widening early entry");}
+  microScore=clamp(microScore,0,14);
+  let microSignal="MICROSTRUCTURE: WATCH",microCls="warn",microAction="Watch only.";
+  if(microScore>=9&&mispricingSide!=="NONE"&&timeLeft>=3&&timeLeft<=9){
+    microSignal=`MICRO SCALP: ENTER ${mispricingSide}`;microCls=mispricingSide==="YES"?"yes":"no";microAction=`Strong edge — consider ${mispricingSide} for scalp.`;
+  } else if(microScore>=5&&mispricingSide!=="NONE"){
+    microSignal=`MICRO WATCH: ${mispricingSide}`;microCls=mispricingSide==="YES"?"yes":"no";microAction=`Watch ${mispricingSide}. Confirm before entry.`;
+  } else if(timeLeft>10){
+    microSignal="MICRO: EARLY BIAS ONLY";microCls="warn";microAction="Too early for scalp.";
+  } else if(timeLeft<2.5){
+    microSignal="MICRO: TOO LATE";microCls="skip";microAction="Don't chase.";
+  }
+  let exitPlan="No active scalp exit.";
+  if(mispricingSide==="YES"){
+    const t1=clamp(mktYes+0.10,0,0.95), t2=clamp(mktYes+0.18,0,0.95), st=clamp(mktYes-0.07,0.03,0.95);
+    exitPlan=`YES TP: ${(t1*100).toFixed(0)}–${(t2*100).toFixed(0)}¢ | stop ~${(st*100).toFixed(0)}¢`;
+  } else if(mispricingSide==="NO"){
+    const t1=clamp(mktNo+0.10,0,0.95), t2=clamp(mktNo+0.18,0,0.95), st=clamp(mktNo-0.07,0.03,0.95);
+    exitPlan=`NO TP: ${(t1*100).toFixed(0)}–${(t2*100).toFixed(0)}¢ | stop ~${(st*100).toFixed(0)}¢`;
+  }
+  let cushionSignal="NO CUSHION SIGNAL",cushionClass="skip",cushionReason="Not enough distance.";
+  if(avgCushion>=cushionThresh*1.25&&yesScore>=6){ cushionSignal="AVG CUSHION: YES SIDE";cushionClass="yes";cushionReason="Projected avg cushioned above target + YES indicators."; }
+  else if(avgCushion<=-cushionThresh*1.25&&noScore>=6){ cushionSignal="AVG CUSHION: NO SIDE";cushionClass="no";cushionReason="Projected avg cushioned below target + NO indicators."; }
+  else if(Math.abs(avgCushion)<cushionThresh*1.15){ cushionSignal="TARGET MAGNET: SKIP";cushionClass="skip";cushionReason="Too close to target — one move flips outcome."; }
+  let earlyBias="NO EARLY BIAS",earlyBiasClass="skip";
+  const earlyYes=timeLeft>7&&price>target&&latestAvg>target&&proj>target&&t5pos&&t10pos&&ema9>ema21&&price>vwap&&rsi>52&&rsi<68&&avgCushion>=cushionThresh*2&&yesScore>=7&&(flow.cls==="yes"||book.cls==="yes");
+  const earlyNo= timeLeft>7&&price<target&&latestAvg<target&&proj<target&&!t5pos&&!t10pos&&ema9<ema21&&price<vwap&&rsi<48&&rsi>32&&avgCushion<=-cushionThresh*2&&noScore>=7&&(flow.cls==="no"||book.cls==="no");
+  if(earlyYes){ earlyBias="EARLY BIAS: YES likely";earlyBiasClass="yes"; }
+  if(earlyNo){  earlyBias="EARLY BIAS: NO likely";earlyBiasClass="no"; }
+  let rsiSignal="RSI NEUTRAL",rsiClass="skip";
+  if(rsi>52&&rsi<68){rsiSignal="RSI BULLISH";rsiClass="yes";}
+  else if(rsi<48&&rsi>32){rsiSignal="RSI BEARISH";rsiClass="no";}
+  else if(rsi>=70){rsiSignal="RSI OVERBOUGHT";rsiClass="no";}
+  else if(rsi<=30){rsiSignal="RSI OVERSOLD";rsiClass="yes";}
+  const override=vwapOverride({price,target,vwap,vol,trend5,trend10,yesProb:yes*100,noProb:no*100,timeLeft});
+  if(override.signal!=="NO SPECIAL VWAP OVERRIDE") warnings.push(override.signal+" → "+override.action);
+  const nearTarget=Math.abs(price-target)<=vol*2.0||targetMagnet;
+  const bouncePoss=rsi<=42&&rsi>=25&&(latestGreen||trend5>trend10||price>=latestAvg-vol);
+  const pullPoss  =rsi>=58&&rsi<=75&&(latestRed||trend5<trend10||price<=latestAvg+vol);
+  let scalpSignal="NO SCALP SETUP",scalpClass="skip",scalpAction="No scalp trade.",scalpEntry="None",scalpExit="None",scalpStop="None",scalpReason="No clear mispricing.";
+  const ysCheap=mktYes<=0.35, noCheap=mktNo<=0.35;
+  if(timeLeft>=4&&timeLeft<=12&&ysCheap&&nearTarget&&bouncePoss&&!volVeryHigh){
+    scalpSignal="SCALP YES OPPORTUNITY";scalpClass="yes";scalpAction="Buy YES — quick cash-out only.";
+    scalpEntry=`YES ≤${(mktYes*100).toFixed(1)}% near target`;
+    scalpExit=`TP ${(clamp(mktYes+0.12,0,0.95)*100).toFixed(0)}–${(clamp(mktYes+0.20,0,0.95)*100).toFixed(0)}¢`;
+    scalpStop="Exit if price breaks below target.";scalpReason="YES cheap + near target + bounce signal.";
+  } else if(timeLeft>=4&&timeLeft<=12&&noCheap&&nearTarget&&pullPoss&&!volVeryHigh){
+    scalpSignal="SCALP NO OPPORTUNITY";scalpClass="no";scalpAction="Buy NO — quick cash-out only.";
+    scalpEntry=`NO ≤${(mktNo*100).toFixed(1)}% near target`;
+    scalpExit=`TP ${(clamp(mktNo+0.12,0,0.95)*100).toFixed(0)}–${(clamp(mktNo+0.20,0,0.95)*100).toFixed(0)}¢`;
+    scalpStop="Exit if price breaks above target.";scalpReason="NO cheap + near target + pullback signal.";
+  }
+  const tooClose=Math.abs(proj-target)<vol;
+  const earlyWindow=timeLeft>6, idealWindow=timeLeft<=6&&timeLeft>=3, lateWindow=timeLeft<2;
+  let rawDecision="SKIP", timing=confidence>=70?"ENTER IF SIGNAL HOLDS":"WAIT";
+  if(confidence<60||volVeryHigh||tooClose||targetMagnet){ rawDecision="SKIP"; timing="AVOID / WAIT"; }
+  else if(diverg.earlyEntry&&confidence>=60&&timeLeft>6){ rawDecision=diverg.edge>0?"BET YES":"BET NO"; timing="EARLY ENTRY — DIVERGENCE"; }
+  else if(earlyWindow){ rawDecision="WATCH ONLY"; timing=earlyBias!=="NO EARLY BIAS"?"EARLY BIAS — WAIT FOR 6–3 MIN":"TOO EARLY — WAIT"; }
+  else if(idealWindow&&confidence>=65&&yes>=0.66&&yesScore>=7&&avgCushion>=cushionThresh*1.25&&price>target&&latestAvg>target&&proj>target&&ema9>ema21&&price>vwap&&latestGreen){ rawDecision="BET YES"; timing="IDEAL ENTRY WINDOW"; }
+  else if(idealWindow&&confidence>=65&&no>=0.66&&noScore>=7&&avgCushion<=-cushionThresh*1.25&&price<target&&latestAvg<target&&proj<target&&ema9<ema21&&price<vwap&&latestRed){ rawDecision="BET NO"; timing="IDEAL ENTRY WINDOW"; }
+  else if(lateWindow&&confidence>=70&&Math.abs(avgCushion)>=cushionThresh*2&&((yes>no&&yesScore>=7)||(no>yes&&noScore>=7))){ rawDecision=yes>no?"BET YES":"BET NO"; timing="LATE ENTRY — LOWER RETURN"; }
+  else { rawDecision="SKIP"; timing="WAIT"; }
+  const confirmed=applyConfirm(product,rawDecision,timing);
+  return {
+    yes,no,confidence,mktYes,mktNo,
+    decision:confirmed.decision,cls:confirmed.cls,timing:confirmed.timing,confirmationCount:confirmed.confirmationCount,
+    reasons,warnings,trend5,trend10,trend15,t5pos,t10pos,t15pos,
+    ema9,ema21,vwap,vwapPlain,rsi,vol,yesScore,noScore,
+    proj,avgCushion,cushionThresh,targetMagnet,
+    cushionSignal,cushionClass,cushionReason,
+    earlyBias,earlyBiasClass,rsiSignal,rsiClass,htf,momentum,
+    flow,book,btcCorr,velSig,persLag,futuresPrem:{...futuresPrem},override,
+    scalpSignal,scalpClass,scalpAction,scalpEntry,scalpExit,scalpStop,scalpReason,
+    fairYes,fairNo,edgeYes,edgeNo,mispricingSide,mispricingClass,mispricingLabel,
+    lagScore,lagClass,lagLabel,priceMovePct,marketMovePts,secondsSince,
+    repricingSpeed,repricingLabel,repricingClass,
+    microScore,microReasons,microSignal,microCls,microAction,exitPlan,diverg,
+    volumeSpike,averageVolume:avgVol(recent30),latestVolume:latest.volume,
+    latestGreen,latestRed,latestAvg,timeLeft,tick
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTO REFRESH
+// ═══════════════════════════════════════════════════════════════
+function toggleAutoRefresh(){
+  const btn=$("btnAuto");
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; btn.textContent="Auto OFF"; btn.className="btn-auto"; return; }
+  const sec=+$("autoRefreshSec").value||20;
+  btn.textContent=`Auto ON (${sec}s)`; btn.className="btn-auto on";
+  autoTimer=setInterval(()=>run(true),sec*1000);
+  run(true);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════
+function switchTab(name){
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.tab===name));
+  document.querySelectorAll(".tab-pane").forEach(p=>p.classList.toggle("active", p.id==="tab-"+name));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — v5.2 mobile-first, everything key on first screen
+// ═══════════════════════════════════════════════════════════════
+function renderResult(r, price, target, p5, p10, p15, product, secondTicker, exchPress){
+  const vol=r.vol;
+  const volMsg=vol/price>0.003?"Very high vol — avoid":vol/price>0.0018?"High vol — careful":"Normal volatility";
+  const candleText=r.latestGreen?"Green ▲":r.latestRed?"Red ▼":"Flat";
+  const cardCls=r.cls==="yes"?"yes-card":r.cls==="no"?"no-card":"";
+
+  // ── High-priority alert banners (decision card) ──────────────
+  let alertsHTML="";
+  if(liveState.lagScore>=3)
+    alertsHTML+=`<div class="alert-strip ${liveState.leader.includes("UP")?"yes":"no"}">⚡ LAG ${liveState.lagScore}/3 — ${liveState.leader}</div>`;
+  if(r.velSig.type!=="sync")
+    alertsHTML+=`<div class="alert-strip ${r.velSig.cls}">📊 ${r.velSig.signal}</div>`;
+  if(r.diverg.earlyEntry)
+    alertsHTML+=`<div class="alert-strip ${r.diverg.cls}">🎯 ${r.diverg.signal}</div>`;
+  if(r.momentum.signal==="BULLISH ACCELERATION"||r.momentum.signal==="BEARISH ACCELERATION")
+    alertsHTML+=`<div class="alert-strip ${r.momentum.cls}">📈 ${r.momentum.signal}: ${r.momentum.detail}</div>`;
+  if(r.override.signal!=="NO SPECIAL VWAP OVERRIDE")
+    alertsHTML+=`<div class="alert-strip ${r.override.cls}">⚠ ${r.override.signal}</div>`;
+
+  // ── Micro inline alert (show when score >= 5) ────────────────
+  const showMicroAlert = r.microScore>=5 && r.mispricingSide!=="NONE";
+  const microAlertHTML = showMicroAlert ? `
+  <div class="inline-alert ${r.microCls}">
+    <div class="inline-alert-title">${r.microSignal}</div>
+    <div>${r.microAction} &nbsp;·&nbsp; Score <b>${r.microScore}/14</b></div>
+    <div class="inline-alert-sub">${r.mispricingLabel} &nbsp;·&nbsp; ${r.lagLabel} &nbsp;·&nbsp; ${r.exitPlan}</div>
+  </div>` : "";
+
+  // ── Scalp inline alert (show when active) ────────────────────
+  const showScalpAlert = r.scalpSignal !== "NO SCALP SETUP";
+  const scalpAlertHTML = showScalpAlert ? `
+  <div class="inline-alert ${r.scalpClass}">
+    <div class="inline-alert-title">🎰 ${r.scalpSignal}</div>
+    <div>${r.scalpAction}</div>
+    <div class="inline-alert-sub">Entry: ${r.scalpEntry} &nbsp;·&nbsp; ${r.scalpExit}</div>
+  </div>` : "";
+
+  // ── Cushion inline alert (show when not "NO CUSHION SIGNAL") ─
+  const showCushAlert = r.cushionSignal !== "NO CUSHION SIGNAL";
+  const cushAlertHTML = showCushAlert ? `
+  <div class="inline-alert ${r.cushionClass}">
+    <div class="inline-alert-title">📐 ${r.cushionSignal}</div>
+    <div class="inline-alert-sub">${r.cushionReason}</div>
+  </div>` : "";
+
+  // ── Exchange strip values ─────────────────────────────────────
+  const cbColor = price>target?"yes":"no";
+  const s2Color = secondTicker.ok?(secondTicker.price>target?"yes":"no"):"warn";
+  const spreadColor = exchPress.cls;
+
+  // ── Scalp badge for scalp tab ─────────────────────────────────
+  const scalpBadge = showScalpAlert
+    ? `<span class="scalp-badge ${r.scalpClass}">${r.scalpSignal}</span>` : "";
+
+  return `
+<!-- ══ DECISION CARD ══════════════════════════════════════════ -->
+<div class="decision-card ${cardCls}">
+  <div class="decision-big ${r.cls}" id="decisionVal">${r.decision}</div>
+  <div class="conf-row">
+    <span class="conf-pill conf" id="confVal">${r.confidence}%</span>
+    <span>YES <b class="yes" id="yesScV">${r.yesScore}</b> · NO <b class="no" id="noScV">${r.noScore}</b></span>
+    <span class="small" id="confCntV">${r.confirmationCount}/2 confirms</span>
+  </div>
+  <div style="margin-top:4px;font-size:13px;">
+    ⏱ <b id="timeV">${r.timeLeft.toFixed(1)}</b> min left &nbsp;·&nbsp; <span id="timingV" class="warn">${r.timing}</span>
+  </div>
+  <div id="alertsDiv">${alertsHTML}</div>
+  <div class="signalAge" id="ageV" style="font-size:10px;color:var(--muted);margin-top:4px;">Updated: ${new Date().toLocaleTimeString()}</div>
+</div>
+
+<!-- ══ PRICE + EXCHANGE STRIP ═════════════════════════════════ -->
+<div class="price-row">
+  <span class="price-target">${product} · Target <b class="info" id="targetV">${target.toFixed(2)}</b></span>
+  <span class="price-big ${cbColor}" id="cbPV">${price.toFixed(2)}</span>
+  <span class="price-diff ${(price-target)>0?"yes":"no"}" id="diffV">${(price-target)>=0?"+":""}${(price-target).toFixed(2)}</span>
+</div>
+<div class="exch-strip">
+  <div class="exch-cell">
+    <div class="exch-cell-label">Coinbase</div>
+    <div class="exch-cell-val ${cbColor}" id="cbPV2">${price.toFixed(4)}</div>
+  </div>
+  <div class="exch-cell">
+    <div class="exch-cell-label">${secondTicker.ok?secondTicker.source:"2nd Source"}</div>
+    <div class="exch-cell-val ${s2Color}" id="s2PV">${secondTicker.ok?secondTicker.price.toFixed(4):"—"}</div>
+  </div>
+  <div class="exch-cell">
+    <div class="exch-cell-label">Spread</div>
+    <div class="exch-cell-val ${spreadColor}" id="exchSpV">${secondTicker.ok?(exchPress.spread>=0?"+":"")+exchPress.spread.toFixed(4):"—"}</div>
+  </div>
+  <div class="exch-cell">
+    <div class="exch-cell-label">Pressure</div>
+    <div class="exch-cell-val ${spreadColor}" id="exchPrV">${exchPress.pressure.replace("EXCHANGE PRESSURE","").replace("BULLISH","BULL").replace("BEARISH","BEAR").trim()||"—"}</div>
+  </div>
+</div>
+
+<!-- ══ QUICK STATS GRID ════════════════════════════════════════ -->
+<div class="quick-grid">
+  <div class="q-box">
+    <div class="q-label">Projected Avg</div>
+    <div class="q-val info" id="projV">${r.proj.toFixed(2)}</div>
+    <div class="q-sub">${r.targetMagnet?'<span class="warn">⚠ Magnet zone</span>':'<span class="yes">✓ Safe dist</span>'}</div>
+  </div>
+  <div class="q-box">
+    <div class="q-label">YES / NO Prob</div>
+    <div class="q-val"><span class="yes" id="toolYesVQ">${(r.yes*100).toFixed(1)}%</span> · <span class="no" id="toolNoVQ">${(r.no*100).toFixed(1)}%</span></div>
+    <div class="q-sub">Kalshi: <span id="kYesVQ">${(r.mktYes*100).toFixed(1)}%</span> YES</div>
+  </div>
+  <div class="q-box">
+    <div class="q-label">RSI · Candle</div>
+    <div class="q-val ${r.rsiClass}" id="rsiVQ">${r.rsi.toFixed(0)} <span class="small">${candleText}</span></div>
+    <div class="q-sub">${r.ema9>r.ema21?'<span class="yes">EMA Bull</span>':'<span class="no">EMA Bear</span>'} · ${r.volumeSpike?'<span class="yes">Vol⚡</span>':'<span class="skip">Vol normal</span>'}</div>
+  </div>
+  <div class="q-box">
+    <div class="q-label">Early Bias</div>
+    <div class="q-val ${r.earlyBiasClass}" id="earlyVQ" style="font-size:12px;">${r.earlyBias.replace("EARLY BIAS: ","").replace("NO EARLY BIAS","Watching")}</div>
+    <div class="q-sub" id="htfVQ">${r.htf.suggestion.replace("HTF BIAS: ","")}</div>
+  </div>
+</div>
+
+<!-- ══ MICRO / SCALP / CUSHION INLINE ALERTS ═════════════════ -->
+${microAlertHTML}${scalpAlertHTML}${cushAlertHTML}
+
+<!-- ══ TABS ════════════════════════════════════════════════════ -->
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="signals" onclick="switchTab('signals')">Signals</button>
+  <button class="tab-btn" data-tab="live"    onclick="switchTab('live')">Live</button>
+  <button class="tab-btn" data-tab="micro"   onclick="switchTab('micro')">Micro</button>
+  <button class="tab-btn" data-tab="scalp"   onclick="switchTab('scalp')">Scalp</button>
+  <button class="tab-btn" data-tab="detail"  onclick="switchTab('detail')">Detail</button>
+</div>
+
+<!-- ══ TAB: SIGNALS ════════════════════════════════════════════ -->
+<div class="tab-pane active" id="tab-signals">
+
+  <!-- Probabilities -->
+  <div class="section">
+    <div class="section-title">Probabilities</div>
+    <div class="prob-grid">
+      <div class="prob-cell"><div class="label">Tool YES</div><div class="val yes" id="toolYesV">${(r.yes*100).toFixed(1)}%</div></div>
+      <div class="prob-cell"><div class="label">Kalshi YES</div><div class="val" id="kYesV">${(r.mktYes*100).toFixed(1)}%</div></div>
+      <div class="prob-cell"><div class="label">Fair YES</div><div class="val ${r.edgeYes>=0.06?"yes":"skip"}" id="fairYesV">${(r.fairYes*100).toFixed(1)}%</div></div>
+      <div class="prob-cell"><div class="label">Tool NO</div><div class="val no" id="toolNoV">${(r.no*100).toFixed(1)}%</div></div>
+      <div class="prob-cell"><div class="label">Kalshi NO</div><div class="val" id="kNoV">${(r.mktNo*100).toFixed(1)}%</div></div>
+      <div class="prob-cell"><div class="label">Fair NO</div><div class="val ${r.edgeNo>=0.06?"no":"skip"}" id="fairNoV">${(r.fairNo*100).toFixed(1)}%</div></div>
+    </div>
+    <div style="margin-top:6px;font-size:12px;">
+      Edge: YES <span class="${r.edgeYes>0.06?"yes":"skip"}" id="eYesV">${(r.edgeYes*100).toFixed(1)}</span> pts
+      &nbsp;·&nbsp; NO <span class="${r.edgeNo>0.06?"no":"skip"}" id="eNoV">${(r.edgeNo*100).toFixed(1)}</span> pts
+    </div>
+  </div>
+
+  <!-- Exchange prices on Signals tab -->
+  <div class="section">
+    <div class="section-title">Exchange Prices</div>
+    <div class="row-item"><span class="row-label">Coinbase (settlement)</span><span class="${cbColor}" id="cbPV3">${price.toFixed(4)}</span></div>
+    <div class="row-item"><span class="row-label">${secondTicker.ok?secondTicker.source:"Second Source"}</span><span class="${s2Color}" id="s2PV2">${secondTicker.ok?secondTicker.price.toFixed(4):"Unavailable"}</span></div>
+    <div class="row-item"><span class="row-label">Spread</span><span class="${spreadColor}" id="exchSpV2">${secondTicker.ok?(exchPress.spread>=0?"+":"")+exchPress.spread.toFixed(4)+" ("+exchPress.spreadPct.toFixed(4)+"%)":"—"}</span></div>
+    <div class="row-item"><span class="row-label">Exchange Pressure</span><span class="${spreadColor}" id="exchPrV2">${exchPress.pressure}</span></div>
+    <div class="small" style="margin-top:3px;" id="exchRsV">${exchPress.reason}</div>
+  </div>
+
+  <!-- Key signals -->
+  <div class="section">
+    <div class="section-title">Key Signals</div>
+    <div class="row-item"><span class="row-label">HTF Bias</span><span class="${r.htf.cls}" id="htfSugV">${r.htf.suggestion.replace("HTF BIAS: ","")}</span></div>
+    <div class="row-item"><span class="row-label">Momentum</span><span class="${r.momentum.cls}" id="momSigV">${r.momentum.signal==="NONE"?"FLAT":r.momentum.signal} <span class="small">${r.momentum.detail}</span></span></div>
+    <div class="row-item"><span class="row-label">Trade Flow</span><span class="${r.flow.cls}">${r.flow.signal} (${(r.flow.ratio*100).toFixed(0)}%)</span></div>
+    <div class="row-item"><span class="row-label">Order Book</span><span class="${r.book.cls}">${r.book.signal}</span></div>
+    <div class="row-item"><span class="row-label">Futures Prem</span><span class="${r.futuresPrem.cls}">${r.futuresPrem.signal} (${r.futuresPrem.premium.toFixed(3)}%)</span></div>
+    <div class="row-item"><span class="row-label">BTC Corr</span><span class="${r.btcCorr.cls}">${r.btcCorr.signal}</span></div>
+    <div class="row-item"><span class="row-label">Kalshi Velocity</span><span class="${r.velSig.cls}" id="velSigV">${r.velSig.signal}</span></div>
+    <div class="row-item"><span class="row-label">Divergence</span><span class="${r.diverg.cls}" id="divergV">${r.diverg.signal}</span></div>
+    <div class="row-item"><span class="row-label">VWAP Override</span><span class="${r.override.cls}" id="ovSigV">${r.override.signal}</span></div>
+    <div class="row-item"><span class="row-label">Lag Detector</span><span class="${r.lagClass}" id="lagV2">${r.lagLabel}</span></div>
+    <div class="row-item"><span class="row-label">Micro Score</span><span class="${r.microCls}">${r.microScore}/14 — ${r.microSignal}</span></div>
+    <div class="row-item"><span class="row-label">Cushion</span><span class="${r.cushionClass}">${r.cushionSignal}</span></div>
+  </div>
+
+  <!-- Reasons + warnings -->
+  <div class="section">
+    <div class="section-title">Why</div>
+    <div class="small" id="whyV">${r.reasons.map(s=>"· "+s).join("<br>")}</div>
+    ${r.warnings.length?`<div style="margin-top:6px;" class="small warn" id="warnV">${r.warnings.map(s=>"⚠ "+s).join("<br>")}</div>`:""}
+  </div>
+</div>
+
+<!-- ══ TAB: LIVE ═══════════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-live">
+  <div class="section">
+    <div class="section-title">Fast Market Layer</div>
+    <div class="row-item"><span class="row-label">Fast Source</span><span>${liveState.fastSource} ${liveState.fastPrice?liveState.fastPrice.toFixed(4):"—"}</span></div>
+    <div class="row-item"><span class="row-label">Leader</span><span class="${liveState.lagScore>=3?"warn":liveState.lagScore>=1?"info":"skip"}">${liveState.leader}</span></div>
+    <div class="row-item"><span class="row-label">Lag Score</span><span class="${liveState.lagScore>=3?"warn":liveState.lagScore>=1?"info":"skip"}">${liveState.lagScore}/3</span></div>
+    <div class="row-item"><span class="row-label">WS Status</span><span class="small">${liveState.status}</span></div>
+  </div>
+  ${r.tick ? `
+  <div class="section">
+    <div class="section-title">⚡ Tick Signals (seconds fresh)</div>
+    <div class="tick-row">
+      <span class="tick-chip ${r.tick.ema5tick>r.tick.ema13tick?"yes":"no"}">${r.tick.ema5tick>r.tick.ema13tick?"EMA Bull ▲":"EMA Bear ▼"}</span>
+      <span class="tick-chip ${r.tick.rsiTick>55?"yes":r.tick.rsiTick<45?"no":"skip"}">RSI ${r.tick.rsiTick.toFixed(0)}</span>
+      <span class="tick-chip ${r.tick.trend30s>0?"yes":"no"}">30s ${r.tick.trend30s>=0?"+":""}${r.tick.trend30s.toFixed(2)}</span>
+      <span class="tick-chip ${r.tick.trend60s>0?"yes":"no"}">60s ${r.tick.trend60s>=0?"+":""}${r.tick.trend60s.toFixed(2)}</span>
+      <span class="tick-chip ${price>r.tick.micro30vwap?"yes":"no"}">${price>r.tick.micro30vwap?"▲":"▼"} 2mVWAP</span>
+    </div>
+  </div>` : `<div class="section"><div class="section-title skip">⚡ Tick Signals</div><div class="small">Accumulating ticks — refresh after ~30s</div></div>`}
+  <div class="section">
+    <div class="section-title">Kalshi Velocity</div>
+    <div class="row-item"><span class="row-label">Signal</span><span class="${r.velSig.cls}">${r.velSig.signal}</span></div>
+    <div class="row-item"><span class="row-label">Speed</span><span class="${Math.abs(r.velSig.vel)>=3?"warn":"skip"}">${r.velSig.vel>=0?"+":""}${r.velSig.vel.toFixed(1)} pts/min</span></div>
+    <div class="row-item"><span class="row-label">Persistent Lag</span><span class="${r.persLag?"warn":"skip"}">${r.persLag?"YES — slow to reprice":"No"}</span></div>
+    <div class="row-item"><span class="row-label">Repricing</span><span class="${r.repricingClass}">${r.repricingLabel} (${r.repricingSpeed.toFixed(1)} pts/min)</span></div>
+  </div>
+</div>
+
+<!-- ══ TAB: MICRO ══════════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-micro">
+  <div class="section">
+    <div class="section-title ${r.microCls}" id="microSigV">${r.microSignal}</div>
+    <div class="row-item"><span class="row-label">Action</span><span id="microActV">${r.microAction}</span></div>
+    <div class="row-item"><span class="row-label">Mispricing</span><span class="${r.mispricingClass}" id="microMisV">${r.mispricingLabel}</span></div>
+    <div class="row-item"><span class="row-label">Micro Score</span><span class="${r.microCls}" id="microScV">${r.microScore}/14</span></div>
+    <div class="row-item"><span class="row-label">Lag Detector</span><span class="${r.lagClass}" id="lagV">${r.lagLabel}</span></div>
+    <div class="row-item"><span class="row-label">ΔPrice / ΔKalshi</span><span class="small">${r.priceMovePct.toFixed(3)}% · ${r.marketMovePts.toFixed(1)} pts (${r.secondsSince.toFixed(0)}s ago)</span></div>
+    <div class="row-item"><span class="row-label">Repricing Speed</span><span class="${r.repricingClass}" id="repV">${r.repricingLabel} (${r.repricingSpeed.toFixed(1)} pts/min)</span></div>
+    <div class="row-item"><span class="row-label">Divergence</span><span class="${r.diverg.cls}" id="divergV2">${r.diverg.signal}</span></div>
+    <div class="row-item"><span class="row-label">Exit Plan</span><span class="small" id="exitV">${r.exitPlan}</span></div>
+    <div style="margin-top:6px;" class="small" id="microRsV">${r.microReasons.join(" · ")||"No strong edge"}</div>
+  </div>
+  <div class="section">
+    <div class="section-title">VWAP Override</div>
+    <div class="row-item"><span class="row-label">Signal</span><span class="${r.override.cls}" id="ovSigV2">${r.override.signal}</span></div>
+    <div class="row-item"><span class="row-label">Action</span><span id="ovActV">${r.override.action}</span></div>
+    <div class="row-item"><span class="row-label">Conf Boost</span><span>${r.override.confidenceBoost}</span></div>
+    <div class="row-item"><span class="row-label">Cushion</span><span class="${r.override.weakCushion?"warn":"yes"}">${r.override.weakCushion?"Weak":"Strong"} (${r.override.cushion.toFixed(4)})</span></div>
+    <div class="small" style="margin-top:4px;" id="ovRsV">${r.override.reason}</div>
+  </div>
+</div>
+
+<!-- ══ TAB: SCALP ══════════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-scalp">
+  <div class="section">
+    ${scalpBadge}
+    <div class="section-title ${r.scalpClass}" id="scalpSigV">${r.scalpSignal}</div>
+    <div class="row-item"><span class="row-label">Action</span><span id="scalpActV">${r.scalpAction}</span></div>
+    <div class="row-item"><span class="row-label">Entry</span><span id="scalpEntV">${r.scalpEntry}</span></div>
+    <div class="row-item"><span class="row-label">Exit / TP</span><span id="scalpExV">${r.scalpExit}</span></div>
+    <div class="row-item"><span class="row-label">Stop / Avoid</span><span id="scalpStV">${r.scalpStop}</span></div>
+    <div class="small" style="margin-top:4px;" id="scalpRsV">${r.scalpReason}</div>
+  </div>
+  <div class="section">
+    <div class="section-title">Cushion Signal</div>
+    <div class="${r.cushionClass}" id="cushSigV" style="font-weight:700;font-size:14px;">${r.cushionSignal}</div>
+    <div class="small" style="margin-top:4px;" id="cushRsV">${r.cushionReason}</div>
+  </div>
+  <div class="section">
+    <div class="section-title">Entry Timing Guide</div>
+    <div class="row-item"><span class="row-label">&gt;7 min left</span><span class="skip">Early bias only</span></div>
+    <div class="row-item"><span class="row-label">6–3 min left</span><span class="yes">Main entry window</span></div>
+    <div class="row-item"><span class="row-label">&lt;2 min left</span><span class="warn">Late — very strong only</span></div>
+    <div class="row-item"><span class="row-label">Now</span><span class="${r.timeLeft>6?"skip":r.timeLeft>=3?"yes":"warn"}">${r.timeLeft.toFixed(1)} min — ${r.timing}</span></div>
+  </div>
+</div>
+
+<!-- ══ TAB: DETAIL ════════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-detail">
+  <div class="section">
+    <div class="section-title">Core Indicators</div>
+    <div class="row-item"><span class="row-label">Decay-VWAP</span><span class="info">${r.vwap.toFixed(4)} <span class="${price>r.vwap?"yes":"no"}">${price>r.vwap?"▲ Above":"▼ Below"}</span></span></div>
+    <div class="row-item"><span class="row-label">EMA 9/21</span><span>${r.ema9.toFixed(4)} / ${r.ema21.toFixed(4)} <span class="${r.ema9>r.ema21?"yes":"no"}">${r.ema9>r.ema21?"Bull":"Bear"}</span></span></div>
+    <div class="row-item"><span class="row-label">RSI</span><span class="${r.rsiClass}">${r.rsi.toFixed(2)} — ${r.rsiSignal}</span></div>
+    <div class="row-item"><span class="row-label">Candle</span><span class="${r.latestGreen?"yes":r.latestRed?"no":"skip"}">${candleText}</span></div>
+    <div class="row-item"><span class="row-label">Volume</span><span class="${r.volumeSpike?"yes":"skip"}">${r.latestVolume.toFixed(2)} / avg ${r.averageVolume.toFixed(2)} ${r.volumeSpike?"⚡":""}</span></div>
+    <div class="row-item"><span class="row-label">Volatility</span><span class="${vol/price>0.0018?"warn":"skip"}">${vol.toFixed(4)} — ${volMsg}</span></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Trend Table</div>
+    <table>
+      <tr><th>TF</th><th>Status</th><th>Ref Price</th></tr>
+      <tr><td>5m</td><td><span class="${r.t5pos?"yes":"no"}">${r.t5pos?"▲ Pos":"▼ Neg"} (${r.trend5.toFixed(4)})</span></td><td class="small">${p5.toFixed(4)}</td></tr>
+      <tr><td>10m</td><td><span class="${r.t10pos?"yes":"no"}">${r.t10pos?"▲ Pos":"▼ Neg"} (${r.trend10.toFixed(4)})</span></td><td class="small">${p10.toFixed(4)}</td></tr>
+      <tr><td>15m</td><td><span class="${r.t15pos?"yes":"no"}">${r.t15pos?"▲ Pos":"▼ Neg"} (${r.trend15.toFixed(4)})</span></td><td class="small">${p15.toFixed(4)}</td></tr>
+    </table>
+  </div>
+  <div class="section">
+    <div class="section-title">HTF Context</div>
+    <div class="row-item"><span class="row-label">HTF Score</span><span class="${r.htf.cls}">${r.htf.score} — ${r.htf.suggestion.replace("HTF BIAS: ","")}</span></div>
+    <div class="row-item"><span class="row-label">30m / 60m / 120m</span><span class="small">${r.htf.trend30.toFixed(4)} · ${r.htf.trend60.toFixed(4)} · ${r.htf.trend120.toFixed(4)}</span></div>
+    <div class="row-item"><span class="row-label">1h Range pos</span><span class="small">${r.htf.rangePos.toFixed(0)}% (L:${r.htf.low60.toFixed(2)} H:${r.htf.high60.toFixed(2)})</span></div>
+    <div class="row-item"><span class="row-label">HTF Vol Spike</span><span class="${r.htf.volumeSpike60?"warn":"skip"}">${r.htf.volumeSpike60?"Yes":"No"}</span></div>
+    <div class="row-item"><span class="row-label">Extended Move</span><span class="${r.htf.extendedMove?"warn":"skip"}">${r.htf.extendedMove?"⚠ Avoid chasing":"No"}</span></div>
+    <div class="row-item"><span class="row-label">Wick Warning</span><span class="small">${r.htf.wickWarning}</span></div>
+  </div>
+  <div class="small" style="margin-top:8px;color:#445;text-align:center;">
+    v5.2 · tick engine · OB · trade flow · Kalshi velocity · futures premium · BTC corr · decay-VWAP
+  </div>
+</div>
+`;}
+// MAIN RUN
+// ═══════════════════════════════════════════════════════════════
+async function run(silent=false){
+  const savedY=window.scrollY;
+  const product=$("coin").value;
+  const resultEl=$("result");
+  clearErr();
+
+  if(!silent||!resultEl.innerHTML.trim()){
+    resultEl.innerHTML=`<div style="color:var(--muted);padding:12px;text-align:center;font-size:13px;">Loading data...</div>`;
+  }
+  if($("refreshStatus")) $("refreshStatus").innerHTML="⟳";
+
+  await refreshKalshiTarget(silent);
+  const target=+$("target").value;
+  const marketInput=+$("market").value;
+
+  if(!target||isNaN(target)){
+    showErr("No target — Kalshi pull failed. Enter manually.");
+    return;
+  }
+
+  try{
+    const [candles, secondTicker] = await Promise.all([
+      getRestCandles(product, 60),
+      fetchSecondRest(product)
+    ]);
+
+    if(candles.length<30) throw new Error("Not enough candles");
+
+    let price;
+    if(liveState.coinbase && Date.now()-liveState.lastUpdate < 8000){
+      price = liveState.coinbase;
+    } else {
+      price = await getRestTicker(product);
+      tickStore.push(price,"unknown",0);
+    }
+
+    if(!liveState.fastPrice && secondTicker.ok){
+      liveState.fastPrice = secondTicker.price;
+      liveState.fastSource = secondTicker.source+" REST";
+      updateLeader(product);
+    }
+
+    const closes=candles.slice(-30).map(c=>c.close);
+    const latest=candles[candles.length-1];
+    const latestAvg=(latest.open+latest.high+latest.low+latest.close)/4;
+    const getPAgo=(m)=>{ const t=Date.now()-m*60000; return candles.reduce((p,c)=>Math.abs(c.time-t)<Math.abs(p.time-t)?c:p).close; };
+    const p5=getPAgo(5), p10=getPAgo(10), p15=getPAgo(15);
+
+    const r=analyzeV5({product,price,target,marketInput,candles,restCandles:candles,p5,p10,p15,latestAvg,secondPrice:secondTicker.ok?secondTicker.price:null});
+    const exchPress=exchangePressure(price,secondTicker.ok?secondTicker.price:price,r.trend5,r.trend10,r.mktYes,r.mktNo);
+
+    resultEl.innerHTML=renderResult(r,price,target,p5,p10,p15,product,secondTicker,exchPress);
+
+    if($("refreshStatus")) $("refreshStatus").innerHTML=`✓ ${new Date().toLocaleTimeString()}`;
+
+  }catch(e){
+    console.error(e);
+    if(silent&&resultEl.innerHTML.trim()){
+      if($("refreshStatus")) $("refreshStatus").innerHTML="⚠ retry...";
+      showErr(e.message);
+    } else {
+      showErr("Error: "+e.message);
+      resultEl.innerHTML=`<div style="color:var(--muted);padding:12px;font-size:13px;">No result — waiting for data.</div>`;
+    }
+  } finally {
+    setTimeout(()=>window.scrollTo(0,savedY),0);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener("DOMContentLoaded",()=>{
+  // Resize canvas properly
+  const canvas=$("miniChart");
+  if(canvas){ canvas.style.width="100%"; canvas.style.height="48px"; }
+
+  startAllSockets();
+  startKalshiBgPoller();
+  refreshKalshiTarget(false);
+
+  $("market").addEventListener("input",()=>{ $("market").dataset.manualEdit="1"; });
+
+  $("coin").addEventListener("change",async()=>{
+    $("result").innerHTML="";
+    $("market").value=""; $("market").dataset.manualEdit="";
+    $("target").value="";
+    clearErr(); latestKalshi=null;
+    kalshiVel.history.length=0; fairHistory.length=0;
+    tickStore.ticks.length=0; tickStore.candles5s.length=0;
+    tickStore.candles10s.length=0; tickStore.candles30s.length=0;
+    bookStore.bids.clear(); bookStore.asks.clear();
+    localStorage.removeItem("sig_"+$("coin").value);
+    localStorage.removeItem("sigC_"+$("coin").value);
+    startAllSockets();
+    startKalshiBgPoller();
+    await refreshKalshiTarget(false);
+  });
+});
+</script>
+</body>
+</html>
